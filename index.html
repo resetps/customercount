@@ -1,0 +1,1291 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>내원수 대시보드</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+  <style>
+    :root{
+      --bg:#f4f6f8;
+      --panel:#ffffff;
+      --border:#e5e7eb;
+      --text:#111827;
+      --muted:#6b7280;
+      --accent:#2563eb;
+      --success:#10b981;
+      --warning:#f59e0b;
+      --danger:#ef4444;
+    }
+    [data-theme="dark"]{
+      --bg:#0f172a;
+      --panel:#1e293b;
+      --border:#334155;
+      --text:#f1f5f9;
+      --muted:#94a3b8;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      transition:background 0.3s,color 0.3s;
+    }
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:10;
+      background:var(--panel);
+      border-bottom:1px solid var(--border);
+      box-shadow:0 1px 3px rgba(0,0,0,0.05);
+    }
+    .topbar-inner{
+      max-width:1800px;
+      margin:0 auto;
+      padding:20px 32px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+    h1{
+      margin:0;
+      font-size:32px;
+      font-weight:900;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .sub{
+      font-size:14px;
+      color:var(--muted);
+      margin-top:4px;
+    }
+    .theme-toggle{
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      border:1px solid var(--border);
+      background:var(--panel);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:20px;
+      transition:transform 0.2s;
+    }
+    .theme-toggle:hover{ transform:scale(1.1); }
+    .filters-row{
+      display:flex;
+      gap:14px;
+      align-items:flex-end;
+      flex-wrap:wrap;
+    }
+    .presets{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .preset-btn{
+      height:36px;
+      padding:0 12px;
+      font-size:13px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--text);
+      cursor:pointer;
+      font-weight:600;
+      transition:all 0.2s;
+    }
+    .preset-btn:hover{
+      background:var(--accent);
+      color:#fff;
+      border-color:var(--accent);
+    }
+    label{
+      font-size:14px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:6px;
+      font-weight:600;
+    }
+    input,button{
+      height:48px;
+      font-size:16px;
+      padding:0 14px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--text);
+    }
+    button{
+      font-weight:800;
+      background:var(--accent);
+      color:#fff;
+      cursor:pointer;
+      transition:all 0.2s;
+    }
+    button:hover{ opacity:0.9; transform:translateY(-1px); }
+    button:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+    .ghost{
+      background:transparent;
+      color:var(--text);
+      border:1px solid var(--border);
+    }
+    .ghost:hover{
+      background:var(--accent);
+      color:#fff;
+      border-color:var(--accent);
+    }
+    .wrap{
+      max-width:1800px;
+      margin:0 auto;
+      padding:32px;
+    }
+    .cards{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:20px;
+      margin:28px 0;
+    }
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:28px;
+      transition:all 0.3s;
+      position:relative;
+      overflow:hidden;
+    }
+    .card:hover{
+      transform:translateY(-4px);
+      box-shadow:0 8px 16px rgba(0,0,0,0.1);
+    }
+    .card .t{
+      font-size:18px;
+      color:var(--muted);
+      font-weight:600;
+    }
+    .card .v{
+      font-size:48px;
+      font-weight:900;
+      margin-top:12px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:500px 1fr;
+      gap:20px;
+      margin-bottom:20px;
+    }
+    .grid-full{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:20px;
+      margin-bottom:20px;
+    }
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:24px;
+      min-width:0;
+    }
+    .panel h2{
+      margin:0 0 16px;
+      font-size:20px;
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .panel-sub{
+      font-size:13px;
+      color:var(--muted);
+      font-weight:600;
+    }
+    .panel-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:8px;
+    }
+    .panel-actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .btn-sm{
+      height:36px;
+      padding:0 12px;
+      font-size:14px;
+      border-radius:8px;
+    }
+    .btn-danger{
+      background:var(--danger);
+      border-color:var(--danger);
+      color:#fff;
+    }
+    .btn-danger.ghost{
+      background:transparent;
+      color:var(--danger);
+      border-color:var(--danger);
+    }
+    .btn-danger.ghost:hover{
+      background:var(--danger);
+      color:#fff;
+      border-color:var(--danger);
+    }
+    .chart-container{
+      position:relative;
+      height:450px;
+      margin-top:10px;
+    }
+    table{ width:100%; border-collapse:collapse; }
+    thead th{
+      position:sticky;
+      top:0;
+      background:linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%);
+      font-size:15px;
+      font-weight:800;
+      padding:16px 14px;
+      border-bottom:3px solid var(--accent);
+      border-right:1px solid var(--border);
+      text-align:center;
+      white-space:nowrap;
+      cursor:pointer;
+      user-select:none;
+      text-transform:uppercase;
+      letter-spacing:0.5px;
+      color:var(--text);
+      box-shadow:0 2px 4px rgba(0,0,0,0.05);
+    }
+    thead th:last-child{ border-right:none; }
+    [data-theme="dark"] thead th{
+      background:linear-gradient(180deg,var(--panel) 0%,#0f172a 100%);
+      border-bottom-color:var(--accent);
+    }
+    thead th:hover{
+      background:var(--accent);
+      color:#fff;
+      transition:all 0.2s;
+    }
+    thead th:first-child{ text-align:center; font-weight:700; }
+    thead th .sort-icon{ margin-left:6px; opacity:0.4; font-size:14px; }
+    thead th.sorted .sort-icon{ opacity:1; }
+    tbody td{
+      font-size:15px;
+      padding:14px;
+      border-bottom:1px solid var(--border);
+      border-right:1px solid var(--border);
+      text-align:center;
+      transition:background 0.15s;
+    }
+    tbody td:last-child{ border-right:none; }
+    tbody tr:nth-child(odd){ background:var(--panel); }
+    tbody tr:nth-child(even){ background:#f8fafc; }
+    [data-theme="dark"] tbody tr:nth-child(even){ background:rgba(255,255,255,0.03); }
+    tbody tr:hover{
+      background:rgba(37,99,235,0.08);
+      box-shadow:inset 0 0 0 1px rgba(37,99,235,0.2);
+    }
+    tbody td:first-child{
+      background:rgba(37,99,235,0.08);
+      color:var(--accent);
+      font-weight:700;
+      border-right:2px solid var(--accent);
+    }
+    tbody td:nth-child(2){
+      font-weight:700;
+      background:rgba(16,185,129,0.05);
+    }
+    tbody td:not(:first-child){ font-variant-numeric:tabular-nums; }
+    .scroll{ max-height:720px; overflow:auto; width:100%; }
+    .scroll table{ min-width:100%; width:max-content; }
+    #dailyWrap tbody tr{ cursor:pointer; }
+    #dailyWrap tbody tr.selected{
+      background:rgba(37,99,235,0.18);
+      box-shadow:inset 0 0 0 2px rgba(37,99,235,0.45);
+    }
+    .msg{
+      font-size:14px;
+      color:var(--muted);
+      margin-bottom:10px;
+      padding:12px;
+      background:var(--panel);
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+    .msg[data-kind="error"]{ color:var(--danger); border-color:rgba(239,68,68,0.4); }
+    .msg[data-kind="success"]{ color:var(--success); border-color:rgba(16,185,129,0.4); }
+    .entry-panel{ margin-bottom:24px; }
+    .entry-grid{ display:grid; gap:16px; }
+    .entry-fields{ width:100%; }
+    .entry-scroll{ overflow-x:auto; }
+    .entry-table{ width:100%; border-collapse:collapse; }
+    .entry-table th,
+    .entry-table td{
+      border:1px solid var(--border);
+      padding:8px;
+      text-align:center;
+      white-space:nowrap;
+    }
+    .entry-table th{
+      background:#f8fafc;
+      font-weight:700;
+    }
+    [data-theme="dark"] .entry-table th{
+      background:rgba(255,255,255,0.04);
+    }
+    .entry-table input{
+      width:100%;
+      height:36px;
+      font-size:14px;
+      padding:0 8px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--text);
+    }
+    .entry-table .total-cell{
+      background:rgba(16,185,129,0.08);
+      font-weight:700;
+    }
+    .entry-table input[readonly]{
+      background:rgba(16,185,129,0.08);
+      font-weight:700;
+    }
+    .entry-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:16px;
+    }
+    .divider{ height:1px; background:var(--border); margin:18px 0; }    .hidden{ display:none; }
+    @media (max-width:1100px){
+      .grid{ grid-template-columns:1fr; }
+      .grid-full{ grid-template-columns:1fr; }    }
+    @media (max-width:900px){ .cards{ grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:600px){
+      .cards{ grid-template-columns:1fr; }
+      h1{ font-size:22px; }
+      .topbar-inner{ padding:14px 16px; }
+      .wrap{ padding:16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div>
+        <h1>내원수 대시보드<button class="theme-toggle" id="themeToggle" title="테마 전환">🌙</button></h1>
+        <div class="sub">기간 선택 후 데이터 집계</div>
+      </div>
+      <div class="filters-row">
+        <div class="presets">
+          <button class="preset-btn" onclick="setPreset('today')">오늘</button>
+          <button class="preset-btn" onclick="setPreset('week')">최근 7일</button>
+          <button class="preset-btn" onclick="setPreset('month')">이번 달</button>
+          <button class="preset-btn" onclick="setPreset('lastMonth')">지난 달</button>
+        </div>
+        <div>
+          <label>시작일</label>
+          <input id="startDate" type="date" />
+        </div>
+        <div>
+          <label>종료일</label>
+          <input id="endDate" type="date" />
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="btn" onclick="load()">조회</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button class="ghost" id="toggleEntry">입력 모드</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div id="msg" class="msg"></div>
+    <div id="entryPanel" class="panel entry-panel hidden">
+      <h2>입력 모드<span class="panel-sub">일별 데이터를 추가/수정합니다.</span></h2>
+      <div class="entry-grid">
+        <div id="entryFields" class="entry-fields"></div>
+      </div>
+      <div class="entry-actions">
+        <button id="btnEntrySave">저장</button>
+        <button class="ghost" id="btnEntryClear">초기화</button>
+      </div>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="panel" style="margin-bottom:20px;">
+      <h2>일별 총 내원수 추세</h2>
+      <div class="chart-container" style="height:280px;">
+        <canvas id="totalBarChart"></canvas>
+      </div>
+    </div>
+    <div class="grid-full">
+      <div class="panel">
+        <h2>일별 상위 채널 추세</h2>
+        <div class="chart-container">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>채널별 분포</h2>
+        <div class="chart-container">
+          <canvas id="pieChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="panel">
+        <h2>채널별 합계</h2>
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortTable('sumBody', 0)">채널 <span class="sort-icon">↕</span></th>
+              <th onclick="sortTable('sumBody', 1)">합계 <span class="sort-icon">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="sumBody"></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h2>일자별 상세</h2>
+          <div class="panel-actions">
+            <button class="btn-danger ghost" id="btnDeleteRow" type="button">날짜 삭제</button>
+          </div>
+        </div>
+        <div class="scroll" id="dailyWrap"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA5Qekw67qpMcZjEU9jXAkIzyZBZNFZp2E",
+      authDomain: "reset-92637.firebaseapp.com",
+      databaseURL: "https://reset-92637-default-rtdb.firebaseio.com",
+      projectId: "reset-92637",
+      storageBucket: "reset-92637.firebasestorage.app",
+      messagingSenderId: "436716760537",
+      appId: "1:436716760537:web:74705fea8463e59728fdc8",
+      measurementId: "G-BCRNP4WMEY"
+    };
+    const DB_ROOT = "customer_count";
+    const DATA_MODE = "firebase";
+    const STORAGE_KEY = "customer_count_local";
+    const DEFAULT_HEADER = [
+      "총 내원 수",
+      "인터넷 검색",
+      "홈페이지",
+      "강남언니",
+      "바비톡",
+      "SNS",
+      "블로그",
+      "카페",
+      "소개",
+      "워크인",
+      "유튜브",
+      "리얼모델",
+      "해외 에이전시",
+      "메타",
+      "기타"
+    ];
+    const EMBEDDED_CSV = "내원 수,,,,,,,,,,,,,,,,기간,,\n,,,,,,,,,,,,,,,,2025-12-03,2025-12-31,←기간 별 필터링\n합계,150,19,5,33,24,6,0,5,13,0,4,4,5,27,5,,,\n날짜,총 내원 수,인터넷 검색,홈페이지,강남언니,바비톡,SNS,블로그,카페,소개,워크인,유튜브,리얼모델,해외 에이전시,메타,기타,,,\n2025.1.1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.2,11,0,0,1,2,1,0,0,2,0,0,0,2,3,0,,,\n2025.1.3,11,2,0,3,0,1,0,0,0,0,0,1,0,4,0,,,\n2025.1.4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.6,13,1,0,2,1,0,0,1,1,0,4,1,0,1,1,,,\n2025.1.7,9,2,0,1,0,0,0,0,3,0,0,0,0,3,0,,,\n2025.1.8,7,1,0,0,0,0,0,0,2,0,0,1,0,2,1,,,\n2025.1.9,12,1,1,8,0,0,0,0,1,0,0,0,0,1,0,,,\n2025.1.10,6,2,1,1,0,0,0,0,0,0,0,0,0,2,0,,,\n2025.1.11,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.12,8,0,1,1,3,1,0,0,1,0,0,0,1,0,0,,,\n2025.1.13,12,0,0,4,3,0,0,1,0,0,0,1,0,2,1,,,\n2025.1.14,14,3,1,4,3,0,0,0,1,0,0,0,0,2,0,,,\n2025.1.15,7,2,0,1,1,1,0,0,1,0,0,0,0,1,0,,,\n2025.1.16,5,1,0,2,1,0,0,0,0,0,0,0,1,0,0,,,\n2025.1.17,5,0,0,2,2,0,0,0,0,0,0,0,0,1,0,,,\n2025.1.18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.19,6,1,1,0,1,0,0,2,0,0,0,0,0,1,0,,,\n2025.1.20,8,1,0,1,3,1,0,0,0,0,0,0,1,1,0,,,\n2025.1.21,6,1,0,0,1,1,0,1,0,0,0,0,0,2,0,,,\n2025.1.22,5,1,0,1,1,0,0,0,0,0,0,0,0,1,1,,,\n2025.1.23,5,0,0,1,2,0,0,0,1,0,0,0,0,0,1,,,\n2025.1.24,0,,,,,,,,,,,,,,,,,\n2025.1.25,0,,,,,,,,,,,,,,,,,\n2025.1.26,0,,,,,,,,,,,,,,,,,\n2025.1.27,0,,,,,,,,,,,,,,,,,\n2025.1.28,0,,,,,,,,,,,,,,,,,\n2025.1.29,0,,,,,,,,,,,,,,,,,\n2025.1.30,0,,,,,,,,,,,,,,,,,\n2025.1.31,0,,,,,,,,,,,,,,,,,";
+    const initializeApp = firebase.initializeApp;
+    const getDatabase = () => firebase.database();
+    const ref = (dbInstance, path) => dbInstance.ref(path);
+    const onValue = (refObj, cb) => refObj.on("value", cb);
+    const set = (refObj, value) => refObj.set(value);
+    const update = (refObj, value) => refObj.update(value);
+    const remove = (refObj) => refObj.remove();
+    const serverTimestamp = () => firebase.database.ServerValue.TIMESTAMP;
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const state = { header: [], rowsByDate: {}, rows: [] };
+    let trendChart;
+    let pieChart;
+    let totalBarChart;
+    let hasCustomRange = false;
+    let seedAttempted = false;
+    let headerEmpty = true;
+    let rowsEmpty = true;
+    let isUpdatingTotal = false;
+    const startInput = document.getElementById("startDate");
+    const endInput = document.getElementById("endDate");
+    const entryPanel = document.getElementById("entryPanel");
+    let entryDateInput = document.getElementById("entryDate");
+    const entryFields = document.getElementById("entryFields");
+    const btnEntrySave = document.getElementById("btnEntrySave");
+    const btnEntryClear = document.getElementById("btnEntryClear");
+    const btnDeleteRow = document.getElementById("btnDeleteRow");
+    const toggleEntryBtn = document.getElementById("toggleEntry");
+    const themeToggle = document.getElementById("themeToggle");
+    let selectedDateISO = "";
+    function fmt(n){ return Number(n || 0).toLocaleString(); }
+    function setMsg(text, kind){
+      const el = document.getElementById("msg");
+      el.textContent = text || "";
+      el.dataset.kind = kind || "";
+    }
+    function normalizeHeader(raw){
+      if (!raw) return [];
+      if (Array.isArray(raw)){
+        return raw.map(v => String(v || "").trim()).filter(Boolean);
+      }
+      return Object.keys(raw)
+        .sort((a, b) => Number(a) - Number(b))
+        .map(key => String(raw[key] || "").trim())
+        .filter(Boolean);
+    }
+    function toNumber(v){
+      if (v === null || v === undefined || v === "") return 0;
+      if (typeof v === "number") return v;
+      const n = Number(String(v).replace(/,/g, ""));
+      return Number.isNaN(n) ? 0 : n;
+    }
+    function normalizeMetrics(metrics, len){
+      const arr = Array.isArray(metrics) ? metrics : [];
+      const out = new Array(len).fill(0);
+      for (let i = 0; i < Math.min(arr.length, len); i++){
+        out[i] = toNumber(arr[i]);
+      }
+      return out;
+    }
+    function parseDateString(value){
+      if (!value) return null;
+      if (Object.prototype.toString.call(value) === "[object Date]" && !Number.isNaN(value.getTime())){
+        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+      }
+      const str = String(value).trim();
+      const m = str.match(/^(\\d{4})[.\\/-](\\d{1,2})[.\\/-](\\d{1,2})/);
+      if (m){
+        return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+      }
+      const compact = str.match(/^(\\d{4})(\\d{2})(\\d{2})$/);
+      if (compact){
+        return new Date(Number(compact[1]), Number(compact[2]) - 1, Number(compact[3]));
+      }
+      const d = new Date(str);
+      if (!Number.isNaN(d.getTime())){
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      }
+      return null;
+    }
+    function formatISO(date){
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+    function formatLabel(date){
+      const y = date.getFullYear();
+      const m = date.getMonth() + 1;
+      const d = date.getDate();
+      return `${y}.${m}.${d}`;
+    }
+    function findTotalIndex(header){
+      if (!header || !header.length) return -1;
+      const idx = header.findIndex(name => /\uCD1D\s*\uB0B4\uC6D0/i.test(name));
+      if (idx >= 0) return idx;
+      return 0;
+    }
+    function applyComputedTotal(metrics){
+      const totalIdx = findTotalIndex(state.header);
+      if (totalIdx < 0) return metrics;
+      const total = metrics.reduce((sum, value, idx) => (idx === totalIdx ? sum : sum + (value || 0)), 0);
+      metrics[totalIdx] = total;
+      return metrics;
+    }
+    function updateEntryTotal(){
+      if (isUpdatingTotal) return;
+      const totalIdx = findTotalIndex(state.header);
+      if (totalIdx < 0) return;
+      isUpdatingTotal = true;
+      try{
+        const metrics = collectEntryMetrics();
+        const total = metrics.reduce((sum, value, i) => (i === totalIdx ? sum : sum + value), 0);
+        const totalInput = document.getElementById(`metric-${totalIdx}`);
+        if (totalInput){
+          totalInput.value = total;
+        }
+      }finally{
+        isUpdatingTotal = false;
+      }
+    }
+    function getEntryDateISO(){
+      if (!entryDateInput) return "";
+      const date = parseDateString(entryDateInput.value);
+      if (!date) return "";
+      return formatISO(date);
+    }
+    function handleEntryDateChange(){
+      const dateISO = getEntryDateISO();
+      if (!dateISO) return;
+      selectedDateISO = dateISO;
+      prefillEntry(dateISO);
+      setDailySelection(dateISO);
+    }
+    function selectEntryDate(dateISO){
+      if (!entryDateInput) return;
+      entryDateInput.value = dateISO;
+      selectedDateISO = dateISO;
+      prefillEntry(dateISO);
+      updateEntryTotal();
+      if (entryPanel && entryPanel.classList.contains("hidden")){
+        entryPanel.classList.remove("hidden");
+      }
+      if (entryPanel && entryPanel.scrollIntoView){
+        entryPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+    function setDailySelection(dateISO){
+      const dailyBody = document.getElementById("dailyBody");
+      if (!dailyBody) return;
+      dailyBody.querySelectorAll("tr").forEach(row => {
+        const isMatch = dateISO && row.getAttribute("data-date") === dateISO;
+        row.classList.toggle("selected", isMatch);
+      });
+    }
+
+    function buildEntryFields(){
+      if (!state.header.length){
+        entryFields.innerHTML = '<div class="msg">\uD5E4\uB354 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</div>';
+        return;
+      }
+      const totalIdx = findTotalIndex(state.header);
+      const prevDate = entryDateInput ? entryDateInput.value : "";
+      const headCells = state.header.map((name, idx) => {
+        const cls = idx === totalIdx ? "total-cell" : "";
+        return `<th class="${cls}">${name}</th>`;
+      }).join("");
+      const inputCells = state.header.map((_, idx) => {
+        const id = `metric-${idx}`;
+        const readonly = idx === totalIdx ? "readonly" : "";
+        const cls = idx === totalIdx ? "total-cell" : "";
+        return `<td class="${cls}"><input id="${id}" type="number" min="0" step="1" placeholder="0" ${readonly} /></td>`;
+      }).join("");
+      entryFields.innerHTML = `
+        <div class="entry-scroll">
+          <table class="entry-table">
+            <thead>
+              <tr>
+                <th>날짜</th>
+                ${headCells}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input id="entryDate" type="date" /></td>
+                ${inputCells}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+      entryDateInput = document.getElementById("entryDate");
+      if (prevDate) entryDateInput.value = prevDate;
+      entryDateInput.addEventListener("change", handleEntryDateChange);
+      entryDateInput.addEventListener("blur", handleEntryDateChange);
+      entryFields.querySelectorAll("input[id^='metric-']").forEach(input => {
+        if (input.hasAttribute("readonly")) return;
+        input.addEventListener("input", updateEntryTotal);
+      });
+      updateEntryTotal();
+    }
+    function clearEntryFields(){
+      entryFields.querySelectorAll("input[id^='metric-']").forEach(input => { input.value = ""; });
+      updateEntryTotal();
+    }
+    function prefillEntry(dateISO){
+      if (!dateISO) return;
+      const row = state.rowsByDate[dateISO];
+      if (!row || !Array.isArray(row.metrics)){
+        clearEntryFields();
+        return;
+      }
+      const metrics = normalizeMetrics(row.metrics, state.header.length);
+      metrics.forEach((val, idx) => {
+        const input = document.getElementById(`metric-${idx}`);
+        if (input) input.value = ((val === undefined || val === null) ? 0 : val);
+      });
+      updateEntryTotal();
+    }
+    function collectEntryMetrics(){
+      return state.header.map((_, idx) => {
+        const input = document.getElementById(`metric-${idx}`);
+        return toNumber(input ? input.value : 0);
+      });
+    }
+    async function saveEntry(){
+      const dateISO = getEntryDateISO();
+      if (!dateISO){
+        setMsg("날짜 형식을 확인하세요. 예: 2025.1.2", "error");
+        return;
+      }
+      updateEntryTotal();
+      const metrics = collectEntryMetrics();
+      if (DATA_MODE === "local"){
+        updateLocalRow(dateISO, metrics);
+        setMsg("로컬 저장 완료", "success");
+        return;
+      }
+      const payload = { metrics, updatedAt: serverTimestamp() };
+      try{
+        btnEntrySave.disabled = true;
+        await set(ref(db, `${DB_ROOT}/rows/${dateISO}`), payload);
+        setMsg("저장 완료", "success");
+      }catch(err){
+        setMsg(`저장 실패: ${err.message || err}`, "error");
+      }finally{
+        btnEntrySave.disabled = false;
+      }
+    }
+    async function deleteEntry(){
+      const dateISO = selectedDateISO || getEntryDateISO();
+      if (!dateISO){
+        setMsg("삭제할 날짜를 선택하세요.", "error");
+        return;
+      }
+      if (!confirm(`${dateISO} 데이터를 삭제할까요?`)) return;
+      if (DATA_MODE === "local"){
+        const store = loadLocalStore();
+        if (store.rows && store.rows[dateISO]){
+          delete store.rows[dateISO];
+          saveLocalStore(store);
+          applyLocalStore(store, getEmbeddedData());
+        }
+        if (entryDateInput) entryDateInput.value = "";
+        selectedDateISO = "";
+        setDailySelection("");
+        setMsg("삭제 완료", "success");
+        return;
+      }
+      try{
+        btnDeleteRow.disabled = true;
+        await remove(ref(db, `${DB_ROOT}/rows/${dateISO}`));
+        if (entryDateInput) entryDateInput.value = "";
+        selectedDateISO = "";
+        setDailySelection("");
+        setMsg("삭제 완료", "success");
+      }catch(err){
+        setMsg(`삭제 실패: ${err.message || err}`, "error");
+      }finally{
+        btnDeleteRow.disabled = false;
+      }
+    }
+    function setDefaultRange(rows){
+      if (!rows.length || hasCustomRange) return;
+      const minDate = rows[0].date;
+      const maxDate = rows[rows.length - 1].date;
+      if (!startInput.value) startInput.value = formatISO(minDate);
+      if (!endInput.value) endInput.value = formatISO(maxDate);
+    }
+    function getFilteredRows(){
+      const startVal = startInput.value;
+      const endVal = endInput.value;
+      const start = startVal ? new Date(`${startVal}T00:00:00`) : null;
+      const end = endVal ? new Date(`${endVal}T23:59:59`) : null;
+      return state.rows.filter(row => {
+        if (!row.date) return false;
+        if (start && row.date < start) return false;
+        if (end && row.date > end) return false;
+        return true;
+      });
+    }
+    function calcSums(rows){
+      const sums = new Array(state.header.length).fill(0);
+      rows.forEach(row => {
+        row.metrics.forEach((value, idx) => { sums[idx] += value || 0; });
+      });
+      return state.header.map((name, idx) => ({ name, value: sums[idx] }));
+    }
+    function renderCards(sums){
+      if (!sums.length){
+        document.getElementById("cards").innerHTML = "";
+        return;
+      }
+      const totalIdx = findTotalIndex(state.header);
+      const total = totalIdx >= 0 ? sums[totalIdx].value : sums.reduce((acc, cur) => acc + cur.value, 0);
+      const topRoutes = sums.map((item, idx) => ({ ...item, idx }))
+        .filter(item => item.idx !== totalIdx)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 3);
+      let cardsHTML = `
+      <div class=\"card\">
+        <div class=\"t\">총 내원 수</div>
+        <div class=\"v\">${fmt(total)}</div>
+      </div>
+    `;
+      const medals = ["🥇", "🥈", "🥉"];
+      topRoutes.forEach((route, idx) => {
+        cardsHTML += `
+        <div class=\"card\">
+          <div class=\"t\">${medals[idx]} ${route.name}</div>
+          <div class=\"v\">${fmt(route.value)}</div>
+        </div>
+      `;
+      });
+      document.getElementById("cards").innerHTML = cardsHTML;
+    }
+    function renderSum(sums){
+      document.getElementById("sumBody").innerHTML = sums.map(x => `
+        <tr>
+          <td>${x.name}</td>
+          <td><b>${fmt(x.value)}</b></td>
+        </tr>
+      `).join("");
+    }
+    function sortTable(bodyId, colIndex){
+      const tbody = document.getElementById(bodyId);
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      const orderKey = `${bodyId}-${colIndex}`;
+      sortTable.order = sortTable.order || {};
+      const order = sortTable.order[orderKey] === "asc" ? "desc" : "asc";
+      sortTable.order[orderKey] = order;
+      rows.sort((a, b) => {
+        const aVal = a.children[colIndex].textContent.trim();
+        const bVal = b.children[colIndex].textContent.trim();
+        const aNum = parseFloat(aVal.replace(/,/g, ""));
+        const bNum = parseFloat(bVal.replace(/,/g, ""));
+        if (!Number.isNaN(aNum) && !Number.isNaN(bNum)){
+          return order === "asc" ? aNum - bNum : bNum - aNum;
+        }
+        return order === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+      tbody.innerHTML = "";
+      rows.forEach(row => tbody.appendChild(row));
+      const headers = tbody.parentElement.querySelectorAll("th");
+      headers.forEach((h, i) => {
+        h.classList.remove("sorted");
+        if (i === colIndex) h.classList.add("sorted");
+      });
+    }
+    function renderDaily(rows){
+      if (!rows || rows.length === 0){
+        document.getElementById("dailyWrap").innerHTML = "<div class=\"msg\">표시할 데이터가 없습니다.</div>";
+        return;
+      }
+      const th = ["날짜", ...state.header].map((h, idx) => (
+        `<th onclick="sortTable('dailyBody', ${idx})">${h} <span class=\"sort-icon\">&#8597;</span></th>`
+      )).join("");
+      const body = rows.map(row => {
+        const label = row.date ? formatLabel(row.date) : row.dateISO;
+        return `
+          <tr data-date="${row.dateISO}">
+            <td>${label}</td>
+            ${row.metrics.map(v => `<td>${fmt(v)}</td>`).join("")}
+          </tr>
+        `;
+      }).join("");
+      document.getElementById("dailyWrap").innerHTML = `
+      <table>
+        <thead><tr>${th}</tr></thead>
+        <tbody id=\"dailyBody\">${body}</tbody>
+      </table>
+    `;
+      const dailyBody = document.getElementById("dailyBody");
+      if (dailyBody){
+        dailyBody.querySelectorAll("tr").forEach(row => {
+          row.addEventListener("click", () => {
+            const dateISO = row.getAttribute("data-date");
+            if (dateISO){
+              selectEntryDate(dateISO);
+              setDailySelection(dateISO);
+            }
+          });
+        });
+        if (selectedDateISO){
+          setDailySelection(selectedDateISO);
+        }
+      }
+    }
+function createTrendChart(rows){
+      const ctx = document.getElementById("trendChart");
+      if (!ctx) return;
+      const totalIdx = findTotalIndex(state.header);
+      const routeTotals = state.header.map((name, idx) => ({
+        name,
+        index: idx,
+        total: rows.reduce((sum, row) => sum + (row.metrics[idx] || 0), 0)
+      })).filter(route => route.index !== totalIdx);
+      const top5Routes = routeTotals.sort((a, b) => b.total - a.total).slice(0, 5);
+      const labels = rows.map(r => {
+        const label = r.date ? formatLabel(r.date) : r.dateISO;
+        return label.split(".").slice(1).join("/");
+      });
+      const datasets = top5Routes.map((route, i) => ({
+        label: route.name,
+        data: rows.map(r => r.metrics[route.index] || 0),
+        borderWidth: 2,
+        tension: 0.4,
+        fill: false
+      }));
+      const colors = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+      datasets.forEach((ds, i) => {
+        ds.borderColor = colors[i % colors.length];
+        ds.backgroundColor = colors[i % colors.length];
+      });
+      if (trendChart) trendChart.destroy();
+      trendChart = new Chart(ctx, {
+        type: "line",
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom", labels: { color: getComputedStyle(document.body).getPropertyValue("--text") } } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: getComputedStyle(document.body).getPropertyValue("--muted"), callback: value => value.toLocaleString() },
+              grid: { color: getComputedStyle(document.body).getPropertyValue("--border") }
+            },
+            x: {
+              ticks: {
+                color: getComputedStyle(document.body).getPropertyValue("--muted"),
+                maxRotation: 45,
+                minRotation: 0,
+                font: { size: 10 },
+                autoSkip: true,
+                maxTicksLimit: 15
+              },
+              grid: { color: getComputedStyle(document.body).getPropertyValue("--border") }
+            }
+          }
+        }
+      });
+    }
+    function createPieChart(sums){
+      const ctx = document.getElementById("pieChart");
+      if (!ctx) return;
+      const totalIdx = findTotalIndex(state.header);
+      const filtered = sums.filter((_, idx) => idx !== totalIdx);
+      const labels = filtered.map(s => s.name);
+      const data = filtered.map(s => s.value);
+      const colors = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
+      if (pieChart) pieChart.destroy();
+      pieChart = new Chart(ctx, {
+        type: "doughnut",
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: getComputedStyle(document.body).getPropertyValue("--panel") }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom", labels: { color: getComputedStyle(document.body).getPropertyValue("--text") } } } }
+      });
+    }
+    function createTotalBarChart(rows){
+      const ctx = document.getElementById("totalBarChart");
+      if (!ctx) return;
+      const totalIdx = findTotalIndex(state.header);
+      const labels = rows.map(r => {
+        const label = r.date ? formatLabel(r.date) : r.dateISO;
+        const parts = label.split(".");
+        if (parts.length >= 3) return `${parts[1]}/${parts[2]}`;
+        return label;
+      });
+      const totalData = rows.map(r => totalIdx >= 0 ? r.metrics[totalIdx] || 0 : r.metrics.reduce((sum, val) => sum + (val || 0), 0));
+      if (totalBarChart) totalBarChart.destroy();
+      totalBarChart = new Chart(ctx, {
+        type: "bar",
+        data: { labels, datasets: [{ label: "총 내원 수", data: totalData, backgroundColor: "rgba(37, 99, 235, 0.7)", borderColor: "#2563eb", borderWidth: 2, borderRadius: 6 }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => `총 내원 수 ${context.parsed.y.toLocaleString()}명` } } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: getComputedStyle(document.body).getPropertyValue("--muted"), callback: value => value.toLocaleString() },
+              grid: { color: getComputedStyle(document.body).getPropertyValue("--border") }
+            },
+            x: {
+              ticks: {
+                color: getComputedStyle(document.body).getPropertyValue("--muted"),
+                maxRotation: 90,
+                minRotation: 45,
+                font: { size: 10 },
+                autoSkip: true,
+                maxTicksLimit: 20
+              },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+    function updateChartTheme(){
+      if (!trendChart) return;
+      const textColor = getComputedStyle(document.body).getPropertyValue("--text");
+      const mutedColor = getComputedStyle(document.body).getPropertyValue("--muted");
+      const borderColor = getComputedStyle(document.body).getPropertyValue("--border");
+      trendChart.options.plugins.legend.labels.color = textColor;
+      trendChart.options.scales.y.ticks.color = mutedColor;
+      trendChart.options.scales.x.ticks.color = mutedColor;
+      trendChart.options.scales.y.grid.color = borderColor;
+      trendChart.options.scales.x.grid.color = borderColor;
+      trendChart.update();
+    }
+    function updatePieChartTheme(){
+      if (!pieChart) return;
+      const textColor = getComputedStyle(document.body).getPropertyValue("--text");
+      const panelColor = getComputedStyle(document.body).getPropertyValue("--panel");
+      pieChart.options.plugins.legend.labels.color = textColor;
+      pieChart.data.datasets[0].borderColor = panelColor;
+      pieChart.update();
+    }
+    function updateTotalBarChartTheme(){
+      if (!totalBarChart) return;
+      const mutedColor = getComputedStyle(document.body).getPropertyValue("--muted");
+      const borderColor = getComputedStyle(document.body).getPropertyValue("--border");
+      totalBarChart.options.scales.y.ticks.color = mutedColor;
+      totalBarChart.options.scales.x.ticks.color = mutedColor;
+      totalBarChart.options.scales.y.grid.color = borderColor;
+      totalBarChart.update();
+    }
+    function renderAll(){
+      if (!state.header.length){
+        setMsg("헤더 정보를 불러오는 중...", "");
+        return;
+      }
+      const rows = getFilteredRows();
+      const sums = calcSums(rows);
+      renderCards(sums);
+      renderSum(sums);
+      renderDaily(rows);
+      createTotalBarChart(rows);
+      createTrendChart(rows);
+      createPieChart(sums);
+      if (!rows.length){
+        setMsg("표시할 데이터가 없습니다.", "error");
+      }else{
+        setMsg("조회 완료", "success");
+      }
+    }
+    function setPreset(type){
+      const today = new Date();
+      const start = new Date();
+      const end = new Date();
+      switch(type){
+        case "today":
+          start.setDate(today.getDate());
+          break;
+        case "week":
+          start.setDate(today.getDate() - 6);
+          break;
+        case "month":
+          start.setDate(1);
+          break;
+        case "lastMonth":
+          start.setMonth(today.getMonth() - 1);
+          start.setDate(1);
+          end.setDate(0);
+          break;
+      }
+      startInput.value = formatISO(start);
+      endInput.value = formatISO(end);
+      hasCustomRange = true;
+      load();
+    }
+    function load(){ hasCustomRange = true; renderAll(); }
+    function toggleTheme(){
+      const html = document.documentElement;
+      const current = html.getAttribute("data-theme");
+      const next = current === "dark" ? "light" : "dark";
+      html.setAttribute("data-theme", next);
+      localStorage.setItem("theme", next);
+      themeToggle.textContent = next === "dark" ? "☀️" : "🌙";
+      updateChartTheme();
+      updatePieChartTheme();
+      updateTotalBarChartTheme();
+    }
+    function parseCSV(text){
+      const rows = [];
+      let row = [];
+      let current = "";
+      let inQuotes = false;
+      for (let i = 0; i < text.length; i++){
+        const char = text[i];
+        const next = text[i + 1];
+        if (char === '"' && inQuotes && next === '"'){
+          current += '"';
+          i++;
+          continue;
+        }
+        if (char === '"'){
+          inQuotes = !inQuotes;
+          continue;
+        }
+        if (char === "," && !inQuotes){
+          row.push(current);
+          current = "";
+          continue;
+        }
+        if ((char === "\n" || char === "\r") && !inQuotes){
+          if (char === "\r" && next === "\n") i++;
+          row.push(current);
+          if (row.length > 1 || row[0].trim() !== "") rows.push(row);
+          row = [];
+          current = "";
+          continue;
+        }
+        current += char;
+      }
+      if (current.length || row.length){
+        row.push(current);
+        rows.push(row);
+      }
+      return rows;
+    }
+    function extractCSVData(rows){
+      const headerIdx = rows.findIndex(r => /날짜|date/i.test(String(r[0] || "").trim()));
+      if (headerIdx < 0) throw new Error("CSV에서 헤더(날짜 행)를 찾지 못했습니다.");
+      const header = rows[headerIdx].slice(1).map(v => String(v || "").trim()).filter(Boolean);
+      const dataRows = rows.slice(headerIdx + 1);
+      const mapped = {};
+      dataRows.forEach(row => {
+        const dateRaw = row[0];
+        const date = parseDateString(dateRaw);
+        if (!date) return;
+        const dateISO = formatISO(date);
+        const metrics = header.map((_, idx) => toNumber(row[idx + 1]));
+        mapped[dateISO] = { metrics, updatedAt: serverTimestamp() };
+      });
+      return { header, rows: mapped };
+    }
+    function loadLocalStore(){
+      try{
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      }catch(err){
+        return {};
+      }
+    }
+    function saveLocalStore(data){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data || {}));
+    }
+    function getEmbeddedData(){
+      if (!EMBEDDED_CSV || !EMBEDDED_CSV.trim()) return null;
+      try{
+        const text = EMBEDDED_CSV.replace(/^\uFEFF/, "");
+        return extractCSVData(parseCSV(text));
+      }catch(err){
+        return null;
+      }
+    }
+    function applyLocalStore(store, embedded){
+      const base = embedded || null;
+      const header = (store && Array.isArray(store.header) && store.header.length)
+        ? store.header
+        : (base && base.header && base.header.length ? base.header : DEFAULT_HEADER);
+      const rowsByDate = {
+        ...(base && base.rows ? base.rows : {}),
+        ...(store && store.rows ? store.rows : {})
+      };
+      state.header = header;
+      state.rowsByDate = rowsByDate;
+      state.rows = Object.entries(state.rowsByDate).map(([dateISO, payload]) => {
+        const date = parseDateString(dateISO);
+        const metrics = normalizeMetrics(payload && payload.metrics ? payload.metrics : payload, state.header.length);
+        applyComputedTotal(metrics);
+        return { dateISO, date, metrics };
+      }).filter(row => row.date).sort((a, b) => a.date - b.date);
+      buildEntryFields();
+      setDefaultRange(state.rows);
+      renderAll();
+    }
+    function initLocal(){
+      const embedded = getEmbeddedData();
+      const store = loadLocalStore();
+      applyLocalStore(store, embedded);
+    }
+    function updateLocalRow(dateISO, metrics){
+      const store = loadLocalStore();
+      store.header = state.header;
+      store.rows = store.rows || {};
+      store.rows[dateISO] = { metrics, updatedAt: Date.now() };
+      saveLocalStore(store);
+      applyLocalStore(store, getEmbeddedData());
+    }
+    async function seedFromEmbeddedCsv(headerRef, rowsRef){
+      if (seedAttempted) return;
+      seedAttempted = true;
+      if (!EMBEDDED_CSV || !EMBEDDED_CSV.trim()) return;
+      try{
+        const text = EMBEDDED_CSV.replace(/^﻿/, "");
+        const parsed = extractCSVData(parseCSV(text));
+        await set(headerRef, parsed.header);
+        await update(rowsRef, parsed.rows);
+        setMsg("초기 데이터를 적용했습니다.", "success");
+      }catch(err){
+        setMsg(`초기 데이터 적용 실패: ${err.message || err}`, "error");
+      }
+    }
+    function subscribe(){
+      setMsg("Firebase 연결 중...", "");
+      const headerRef = ref(db, `${DB_ROOT}/meta/header`);
+      const rowsRef = ref(db, `${DB_ROOT}/rows`);
+      onValue(headerRef, snapshot => {
+        const header = normalizeHeader(snapshot.val());
+        headerEmpty = header.length === 0;
+        if (headerEmpty){
+          state.header = [...DEFAULT_HEADER];
+          if (rowsEmpty){
+            seedFromEmbeddedCsv(headerRef, rowsRef);
+          }else{
+            set(headerRef, state.header).catch(() => {});
+          }
+        }else{
+          state.header = header;
+        }
+        buildEntryFields();
+        renderAll();
+      });
+      onValue(rowsRef, snapshot => {
+        state.rowsByDate = snapshot.val() || {};
+        rowsEmpty = Object.keys(state.rowsByDate).length === 0;
+        if (rowsEmpty && headerEmpty){
+          seedFromEmbeddedCsv(headerRef, rowsRef);
+        }
+        state.rows = Object.entries(state.rowsByDate).map(([dateISO, payload]) => {
+          const date = parseDateString(dateISO);
+          const metrics = normalizeMetrics(payload && payload.metrics ? payload.metrics : payload, state.header.length);
+          applyComputedTotal(metrics);
+          return { dateISO, date, metrics };
+        }).filter(row => row.date).sort((a, b) => a.date - b.date);
+        setDefaultRange(state.rows);
+        renderAll();
+      });
+    }
+    function init(){
+      const savedTheme = localStorage.getItem("theme") || "light";
+      document.documentElement.setAttribute("data-theme", savedTheme);
+      themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+      themeToggle.addEventListener("click", toggleTheme);
+      toggleEntryBtn.addEventListener("click", () => { entryPanel.classList.toggle("hidden"); });
+      btnEntrySave.addEventListener("click", saveEntry);
+      btnEntryClear.addEventListener("click", clearEntryFields);
+      btnDeleteRow.addEventListener("click", deleteEntry);
+      startInput.addEventListener("change", () => { hasCustomRange = true; });
+      endInput.addEventListener("change", () => { hasCustomRange = true; });
+      if (DATA_MODE === "local"){
+        initLocal();
+      }else{
+        subscribe();
+      }
+    }
+    window.load = load;
+    window.setPreset = setPreset;
+    window.toggleTheme = toggleTheme;
+    window.sortTable = sortTable;
+    init();
+  </script>
+</body>
+</html>
