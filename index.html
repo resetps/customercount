@@ -787,10 +787,20 @@
     }
     function setDefaultRange(rows){
       if (!rows.length || hasCustomRange) return;
+      if (startInput.value || endInput.value) return;
+      const today = new Date();
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const hasThisMonth = rows.some(row => row.date && row.date >= monthStart && row.date <= monthEnd);
+      if (hasThisMonth){
+        startInput.value = formatISO(monthStart);
+        endInput.value = formatISO(monthEnd);
+        return;
+      }
       const minDate = rows[0].date;
       const maxDate = rows[rows.length - 1].date;
-      if (!startInput.value) startInput.value = formatISO(minDate);
-      if (!endInput.value) endInput.value = formatISO(maxDate);
+      startInput.value = formatISO(minDate);
+      endInput.value = formatISO(maxDate);
     }
     function getFilteredRows(){
       const startVal = startInput.value;
