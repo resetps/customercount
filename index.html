@@ -487,7 +487,11 @@
     const STORAGE_KEY = "customer_count_local";
         const OLD_SEARCH_LABEL = "\uC778\uD130\uB137 \uAC80\uC0C9";
         const NAVER_SEARCH_LABEL = "\uAC80\uC0C9(\uB124\uC774\uBC84)";
-        const GOOGLE_SEARCH_LABEL = "\uAC80\uC0C9(\uAD6C\uAE00)";
+        const OLD_META_LABEL = "\uBA54\uD0C0";
+    const OLD_GOOGLE_AD_LABEL = "";
+    const GOOGLE_AD_LABEL = "\uAD11\uACE0(\uAD6C\uAE00)";
+    const META_LABEL = "\uAD11\uACE0(\uBA54\uD0C0)";
+    const GOOGLE_SEARCH_LABEL = "\uAC80\uC0C9(\uAD6C\uAE00)";
             const DEFAULT_HEADER = [
       "\uCD1D \uB0B4\uC6D0 \uC218",
       "\uAC80\uC0C9(\uB124\uC774\uBC84)",
@@ -503,10 +507,11 @@
       "\uC720\uD29C\uBE0C",
       "\uB9AC\uC5BC\uBAA8\uB378",
       "\uD574\uC678 \uC5D0\uC774\uC804\uC2DC",
-      "\uBA54\uD0C0",
+      "\uAD11\uACE0(\uBA54\uD0C0)",
+      "\uAD11\uACE0(\uAD6C\uAE00)",
       "\uAE30\uD0C0"
     ];
-    const EMBEDDED_CSV = "내원 수,,,,,,,,,,,,,,,,기간,,\n,,,,,,,,,,,,,,,,2025-12-03,2025-12-31,←기간 별 필터링\n합계,150,19,5,33,24,6,0,5,13,0,4,4,5,27,5,,,\n날짜,총 내원 수,검색(네이버),검색(구글),홈페이지,강남언니,바비톡,SNS,블로그,카페,소개,워크인,유튜브,리얼모델,해외 에이전시,메타,기타,,,\n2025.1.1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.2,11,0,0,0,1,2,1,0,0,2,0,0,0,2,3,0,,,\n2025.1.3,11,2,0,0,3,0,1,0,0,0,0,0,1,0,4,0,,,\n2025.1.4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.6,13,1,0,0,2,1,0,0,1,1,0,4,1,0,1,1,,,\n2025.1.7,9,2,0,0,1,0,0,0,0,3,0,0,0,0,3,0,,,\n2025.1.8,7,1,0,0,0,0,0,0,0,2,0,0,1,0,2,1,,,\n2025.1.9,12,1,0,1,8,0,0,0,0,1,0,0,0,0,1,0,,,\n2025.1.10,6,2,0,1,1,0,0,0,0,0,0,0,0,0,2,0,,,\n2025.1.11,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.12,8,0,0,1,1,3,1,0,0,1,0,0,0,1,0,0,,,\n2025.1.13,12,0,0,0,4,3,0,0,1,0,0,0,1,0,2,1,,,\n2025.1.14,14,3,0,1,4,3,0,0,0,1,0,0,0,0,2,0,,,\n2025.1.15,7,2,0,0,1,1,1,0,0,1,0,0,0,0,1,0,,,\n2025.1.16,5,1,0,0,2,1,0,0,0,0,0,0,0,1,0,0,,,\n2025.1.17,5,0,0,0,2,2,0,0,0,0,0,0,0,0,1,0,,,\n2025.1.18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.19,6,1,0,1,0,1,0,0,2,0,0,0,0,0,1,0,,,\n2025.1.20,8,1,0,0,1,3,1,0,0,0,0,0,0,1,1,0,,,\n2025.1.21,6,1,0,0,0,1,1,0,1,0,0,0,0,0,2,0,,,\n2025.1.22,5,1,0,0,1,1,0,0,0,0,0,0,0,0,1,1,,,\n2025.1.23,5,0,0,0,1,2,0,0,0,1,0,0,0,0,0,1,,,\n2025.1.24,0,,0,,,,,,,,,,,,,,,,\n2025.1.25,0,,0,,,,,,,,,,,,,,,,\n2025.1.26,0,,0,,,,,,,,,,,,,,,,\n2025.1.27,0,,0,,,,,,,,,,,,,,,,\n2025.1.28,0,,0,,,,,,,,,,,,,,,,\n2025.1.29,0,,0,,,,,,,,,,,,,,,,\n2025.1.30,0,,0,,,,,,,,,,,,,,,,\n2025.1.31,0,,0,,,,,,,,,,,,,,,,\n";
+    const EMBEDDED_CSV = "내원 수,,,,,,,,,,,,,,,,기간,,\n,,,,,,,,,,,,,,,,2025-12-03,2025-12-31,←기간 별 필터링\n합계,150,19,5,33,24,6,0,5,13,0,4,4,5,27,5,,,\n날짜,총 내원 수,검색(네이버),검색(구글),홈페이지,강남언니,바비톡,SNS,블로그,카페,소개,워크인,유튜브,리얼모델,해외 에이전시,광고(메타),광고(구글),기타,,,\n2025.1.1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.2,11,0,0,0,1,2,1,0,0,2,0,0,0,2,3,0,0,,,\n2025.1.3,11,2,0,0,3,0,1,0,0,0,0,0,1,0,4,0,0,,,\n2025.1.4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.6,13,1,0,0,2,1,0,0,1,1,0,4,1,0,1,0,1,,,\n2025.1.7,9,2,0,0,1,0,0,0,0,3,0,0,0,0,3,0,0,,,\n2025.1.8,7,1,0,0,0,0,0,0,0,2,0,0,1,0,2,0,1,,,\n2025.1.9,12,1,0,1,8,0,0,0,0,1,0,0,0,0,1,0,0,,,\n2025.1.10,6,2,0,1,1,0,0,0,0,0,0,0,0,0,2,0,0,,,\n2025.1.11,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.12,8,0,0,1,1,3,1,0,0,1,0,0,0,1,0,0,0,,,\n2025.1.13,12,0,0,0,4,3,0,0,1,0,0,0,1,0,2,0,1,,,\n2025.1.14,14,3,0,1,4,3,0,0,0,1,0,0,0,0,2,0,0,,,\n2025.1.15,7,2,0,0,1,1,1,0,0,1,0,0,0,0,1,0,0,,,\n2025.1.16,5,1,0,0,2,1,0,0,0,0,0,0,0,1,0,0,0,,,\n2025.1.17,5,0,0,0,2,2,0,0,0,0,0,0,0,0,1,0,0,,,\n2025.1.18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.19,6,1,0,1,0,1,0,0,2,0,0,0,0,0,1,0,0,,,\n2025.1.20,8,1,0,0,1,3,1,0,0,0,0,0,0,1,1,0,0,,,\n2025.1.21,6,1,0,0,0,1,1,0,1,0,0,0,0,0,2,0,0,,,\n2025.1.22,5,1,0,0,1,1,0,0,0,0,0,0,0,0,1,0,1,,,\n2025.1.23,5,0,0,0,1,2,0,0,0,1,0,0,0,0,0,0,1,,,\n2025.1.24,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.25,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.26,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.27,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.28,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.29,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.30,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.31,0,,0,,,,,,,,,,,,,0,,,,\n";
     const initializeApp = firebase.initializeApp;
     const getDatabase = () => firebase.database();
     const ref = (dbInstance, path) => dbInstance.ref(path);
@@ -567,6 +572,31 @@
         const base = hasMetrics ? payload.metrics : payload;
         const metrics = normalizeMetrics(base, header.length);
         metrics.splice(idx + 1, 0, 0);
+        nextRows[dateISO] = hasMetrics ? { ...payload, metrics } : metrics;
+      });
+      return { header: nextHeader, rowsByDate: nextRows, migrated: true };
+    }
+    function migrateMetaLabel(header, rowsByDate){
+      if (!header || !header.length) return { header, rowsByDate, migrated: false };
+      const idx = header.indexOf(OLD_META_LABEL);
+      if (idx < 0) return { header, rowsByDate, migrated: false };
+      const nextHeader = [...header];
+      nextHeader[idx] = META_LABEL;
+      return { header: nextHeader, rowsByDate, migrated: true };
+    }
+    function migrateGoogleAdColumn(header, rowsByDate){
+      if (!header || !header.length) return { header, rowsByDate, migrated: false };
+      const metaIdx = header.indexOf(META_LABEL);
+      if (metaIdx < 0) return { header, rowsByDate, migrated: false };
+      if (header.includes(GOOGLE_AD_LABEL)) return { header, rowsByDate, migrated: false };
+      const nextHeader = [...header];
+      nextHeader.splice(metaIdx + 1, 0, GOOGLE_AD_LABEL);
+      const nextRows = {};
+      Object.entries(rowsByDate || {}).forEach(([dateISO, payload]) => {
+        const hasMetrics = payload && typeof payload === "object" && !Array.isArray(payload) && Array.isArray(payload.metrics);
+        const base = hasMetrics ? payload.metrics : payload;
+        const metrics = normalizeMetrics(base, header.length);
+        metrics.splice(metaIdx + 1, 0, 0);
         nextRows[dateISO] = hasMetrics ? { ...payload, metrics } : metrics;
       });
       return { header: nextHeader, rowsByDate: nextRows, migrated: true };
@@ -1285,6 +1315,17 @@ function createTrendChart(rows){
             state.rowsByDate = migrated.rowsByDate;
             migratedSearchColumns = true;
           }
+          const metaMigrated = migrateMetaLabel(state.header, state.rowsByDate);
+          if (metaMigrated.migrated){
+            state.header = metaMigrated.header;
+            migratedSearchColumns = true;
+          }
+          const googleAdMigrated = migrateGoogleAdColumn(state.header, state.rowsByDate);
+          if (googleAdMigrated.migrated){
+            state.header = googleAdMigrated.header;
+            state.rowsByDate = googleAdMigrated.rowsByDate;
+            migratedSearchColumns = true;
+          }
         }
 
         buildEntryFields();
@@ -1297,6 +1338,17 @@ function createTrendChart(rows){
           if (migrated.migrated){
             state.header = migrated.header;
             state.rowsByDate = migrated.rowsByDate;
+            migratedSearchColumns = true;
+          }
+          const metaMigrated = migrateMetaLabel(state.header, state.rowsByDate);
+          if (metaMigrated.migrated){
+            state.header = metaMigrated.header;
+            migratedSearchColumns = true;
+          }
+          const googleAdMigrated = migrateGoogleAdColumn(state.header, state.rowsByDate);
+          if (googleAdMigrated.migrated){
+            state.header = googleAdMigrated.header;
+            state.rowsByDate = googleAdMigrated.rowsByDate;
             migratedSearchColumns = true;
           }
         }
