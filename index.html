@@ -554,6 +554,7 @@
       "\uD638\uC8FC",
       "\uBABD\uACE8",
       "\uB77C\uC624\uC2A4",
+      "\uB300\uB9CC",
       "\uB124\uB35C\uB780\uB4DC",
       "\uAE30\uD0C0"
     ];
@@ -653,7 +654,15 @@
     }
     function normalizeForeignHeader(header){
       if (!Array.isArray(header)) return [];
-      return header.map(name => (String(name || "").trim() === "\uBAAC\uACE8" ? "\uBABD\uACE8" : name));
+      const cleaned = header.map(name => (String(name || "").trim() === "\uBAAC\uACE8" ? "\uBABD\uACE8" : name));
+      const hasTaiwan = cleaned.some(name => String(name || "").trim() === "\uB300\uB9CC");
+      if (!hasTaiwan){
+        const otherIdx = cleaned.findIndex(name => String(name || "").trim() === "\uB124\uB35C\uB780\uB4DC");
+        const etcIdx = cleaned.findIndex(name => String(name || "").trim() === "\uAE30\uD0C0");
+        const insertIdx = otherIdx >= 0 ? otherIdx : (etcIdx >= 0 ? etcIdx : cleaned.length);
+        cleaned.splice(insertIdx, 0, "\uB300\uB9CC");
+      }
+      return cleaned;
     }
     function updateTabUI(){
       const meta = getActiveMeta();
