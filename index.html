@@ -85,6 +85,35 @@
       align-items:flex-end;
       flex-wrap:wrap;
     }
+    .tabs{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin:6px 0 18px;
+    }
+    .tab-btn{
+      height:38px;
+      padding:0 16px;
+      font-size:14px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--text);
+      cursor:pointer;
+      font-weight:700;
+      transition:all 0.2s;
+    }
+    .tab-btn:hover{
+      background:var(--accent);
+      color:#fff;
+      border-color:var(--accent);
+    }
+    .tab-btn.active{
+      background:var(--accent);
+      color:#fff;
+      border-color:var(--accent);
+      box-shadow:0 6px 12px rgba(37,99,235,0.2);
+    }
     .presets{
       display:flex;
       gap:8px;
@@ -415,9 +444,13 @@
     </div>
   </div>
   <div class="wrap">
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="visits">내원수</button>
+      <button class="tab-btn" data-tab="foreign">외국인</button>
+    </div>
     <div id="msg" class="msg"></div>
     <div id="entryPanel" class="panel entry-panel hidden">
-      <h2>입력 모드<span class="panel-sub">일별 데이터를 추가/수정합니다.</span></h2>
+      <h2><span id="entryTitle">입력 모드</span><span class="panel-sub" id="entrySub">일별 데이터를 추가/수정합니다.</span></h2>
       <div class="entry-grid">
         <div id="entryFields" class="entry-fields"></div>
       </div>
@@ -428,20 +461,20 @@
     </div>
     <div class="cards" id="cards"></div>
     <div class="panel" style="margin-bottom:20px;">
-      <h2>일별 총 내원수 추세</h2>
+      <h2 id="totalTrendTitle">일별 총 내원수 추세</h2>
       <div class="chart-container" style="height:280px;">
         <canvas id="totalBarChart"></canvas>
       </div>
     </div>
     <div class="grid-full">
       <div class="panel">
-        <h2>일별 상위 채널 추세</h2>
+        <h2 id="topTrendTitle">일별 상위 채널 추세</h2>
         <div class="chart-container">
           <canvas id="trendChart"></canvas>
         </div>
       </div>
       <div class="panel">
-        <h2>채널별 분포</h2>
+        <h2 id="pieTitle">채널별 분포</h2>
         <div class="chart-container">
           <canvas id="pieChart"></canvas>
         </div>
@@ -449,11 +482,11 @@
     </div>
     <div class="grid">
       <div class="panel">
-        <h2>채널별 합계</h2>
+        <h2 id="sumTitle">채널별 합계</h2>
         <table>
           <thead>
             <tr>
-              <th onclick="sortTable('sumBody', 0)">채널 <span class="sort-icon">↕</span></th>
+              <th onclick="sortTable('sumBody', 0)" id="sumHeaderLabel"><span class="sum-header-text">채널</span> <span class="sort-icon">↕</span></th>
               <th onclick="sortTable('sumBody', 1)">합계 <span class="sort-icon">↕</span></th>
             </tr>
           </thead>
@@ -462,7 +495,7 @@
       </div>
       <div class="panel">
         <div class="panel-head">
-          <h2>일자별 상세</h2>
+          <h2 id="dailyTitle">일자별 상세</h2>
           <div class="panel-actions">
             <button class="btn-danger ghost" id="btnDeleteRow" type="button">날짜 삭제</button>
           </div>
@@ -511,6 +544,54 @@
       "\uAD11\uACE0(\uAD6C\uAE00)",
       "\uAE30\uD0C0"
     ];
+    const DEFAULT_FOREIGN_HEADER = [
+      "\uC678\uAD6D\uC778 \uC218",
+      "\uC77C\uBCF8",
+      "\uD0DC\uAD6D",
+      "\uBBF8\uAD6D",
+      "\uC911\uAD6D",
+      "\uBCA0\uD2B8\uB0A8",
+      "\uD638\uC8FC",
+      "\uBABD\uACE8",
+      "\uB77C\uC624\uC2A4",
+      "\uB124\uB35C\uB780\uB4DC",
+      "\uAE30\uD0C0"
+    ];
+    const PLACEHOLDER_FOREIGN_HEADER = [
+      "\uC678\uAD6D\uC778 \uC218",
+      "\uAD6D\uAC001",
+      "\uAD6D\uAC002",
+      "\uAD6D\uAC003",
+      "\uAE30\uD0C0"
+    ];
+    const TAB_VISITS = "visits";
+    const TAB_FOREIGN = "foreign";
+    const TAB_META = {
+      [TAB_VISITS]: {
+        label: "\uB0B4\uC6D0\uC218",
+        totalLabel: "\uCD1D \uB0B4\uC6D0 \uC218",
+        groupLabel: "\uCC44\uB110",
+        totalTrendTitle: "\uC77C\uBCC4 \uCD1D \uB0B4\uC6D0\uC218 \uCD94\uC138",
+        topTrendTitle: "\uC77C\uBCC4 \uC0C1\uC704 \uCC44\uB110 \uCD94\uC138",
+        distributionTitle: "\uCC44\uB110\uBCC4 \uBD84\uD3EC",
+        sumTitle: "\uCC44\uB110\uBCC4 \uD569\uACC4",
+        entryTitle: "\uB0B4\uC6D0\uC218 \uC785\uB825 \uBAA8\uB4DC",
+        entrySub: "\uC77C\uBCC4 \uB0B4\uC6D0\uC218/\uACBD\uB85C \uB370\uC774\uD130\uB97C \uCD94\uAC00/\uC218\uC815\uD569\uB2C8\uB2E4.",
+        toggleEntryLabel: "\uB0B4\uC6D0\uC218 \uC785\uB825 \uBAA8\uB4DC"
+      },
+      [TAB_FOREIGN]: {
+        label: "\uC678\uAD6D\uC778",
+        totalLabel: "\uC678\uAD6D\uC778 \uC218",
+        groupLabel: "\uAD6D\uAC00",
+        totalTrendTitle: "\uC77C\uBCC4 \uC678\uAD6D\uC778 \uCD94\uC138",
+        topTrendTitle: "\uC77C\uBCC4 \uC0C1\uC704 \uAD6D\uAC00 \uCD94\uC138",
+        distributionTitle: "\uAD6D\uAC00\uBCC4 \uBD84\uD3EC",
+        sumTitle: "\uAD6D\uAC00\uBCC4 \uD569\uACC4",
+        entryTitle: "\uC678\uAD6D\uC778 \uC785\uB825 \uBAA8\uB4DC",
+        entrySub: "\uC77C\uBCC4 \uC678\uAD6D\uC778/\uAD6D\uAC00 \uB370\uC774\uD130\uB97C \uCD94\uAC00/\uC218\uC815\uD569\uB2C8\uB2E4.",
+        toggleEntryLabel: "\uC678\uAD6D\uC778 \uC785\uB825 \uBAA8\uB4DC"
+      }
+    };
     const EMBEDDED_CSV = "내원 수,,,,,,,,,,,,,,,,기간,,\n,,,,,,,,,,,,,,,,2025-12-03,2025-12-31,←기간 별 필터링\n합계,150,19,5,33,24,6,0,5,13,0,4,4,5,27,5,,,\n날짜,총 내원 수,검색(네이버),검색(구글),홈페이지,강남언니,바비톡,SNS,블로그,카페,소개,워크인,유튜브,리얼모델,해외 에이전시,광고(메타),광고(구글),기타,,,\n2025.1.1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.2,11,0,0,0,1,2,1,0,0,2,0,0,0,2,3,0,0,,,\n2025.1.3,11,2,0,0,3,0,1,0,0,0,0,0,1,0,4,0,0,,,\n2025.1.4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.6,13,1,0,0,2,1,0,0,1,1,0,4,1,0,1,0,1,,,\n2025.1.7,9,2,0,0,1,0,0,0,0,3,0,0,0,0,3,0,0,,,\n2025.1.8,7,1,0,0,0,0,0,0,0,2,0,0,1,0,2,0,1,,,\n2025.1.9,12,1,0,1,8,0,0,0,0,1,0,0,0,0,1,0,0,,,\n2025.1.10,6,2,0,1,1,0,0,0,0,0,0,0,0,0,2,0,0,,,\n2025.1.11,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.12,8,0,0,1,1,3,1,0,0,1,0,0,0,1,0,0,0,,,\n2025.1.13,12,0,0,0,4,3,0,0,1,0,0,0,1,0,2,0,1,,,\n2025.1.14,14,3,0,1,4,3,0,0,0,1,0,0,0,0,2,0,0,,,\n2025.1.15,7,2,0,0,1,1,1,0,0,1,0,0,0,0,1,0,0,,,\n2025.1.16,5,1,0,0,2,1,0,0,0,0,0,0,0,1,0,0,0,,,\n2025.1.17,5,0,0,0,2,2,0,0,0,0,0,0,0,0,1,0,0,,,\n2025.1.18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.19,6,1,0,1,0,1,0,0,2,0,0,0,0,0,1,0,0,,,\n2025.1.20,8,1,0,0,1,3,1,0,0,0,0,0,0,1,1,0,0,,,\n2025.1.21,6,1,0,0,0,1,1,0,1,0,0,0,0,0,2,0,0,,,\n2025.1.22,5,1,0,0,1,1,0,0,0,0,0,0,0,0,1,0,1,,,\n2025.1.23,5,0,0,0,1,2,0,0,0,1,0,0,0,0,0,0,1,,,\n2025.1.24,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.25,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.26,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.27,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.28,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.29,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.30,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.31,0,,0,,,,,,,,,,,,,0,,,,\n";
     const initializeApp = firebase.initializeApp;
     const getDatabase = () => firebase.database();
@@ -522,16 +603,18 @@
     const serverTimestamp = () => firebase.database.ServerValue.TIMESTAMP;
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const state = { header: [], rowsByDate: {}, rows: [] };
+    const state = { header: [], foreignHeader: [], rowsByDate: {}, rows: [] };
     let trendChart;
     let pieChart;
     let totalBarChart;
     let hasCustomRange = false;
     let seedAttempted = false;
     let headerEmpty = true;
+    let foreignHeaderEmpty = true;
     let rowsEmpty = true;
     let migratedSearchColumns = false;
     let isUpdatingTotal = false;
+    let activeTab = TAB_VISITS;
     const startInput = document.getElementById("startDate");
     const endInput = document.getElementById("endDate");
     const entryPanel = document.getElementById("entryPanel");
@@ -548,6 +631,58 @@
       const el = document.getElementById("msg");
       el.textContent = text || "";
       el.dataset.kind = kind || "";
+    }
+    function getActiveMeta(){
+      return TAB_META[activeTab] || TAB_META[TAB_VISITS];
+    }
+    function getHeaderByTab(tab){
+      return tab === TAB_FOREIGN ? state.foreignHeader : state.header;
+    }
+    function getActiveHeader(){
+      return getHeaderByTab(activeTab);
+    }
+    function getMetricsKeyByTab(tab){
+      return tab === TAB_FOREIGN ? "foreignMetrics" : "metrics";
+    }
+    function getActiveMetricsKey(){
+      return getMetricsKeyByTab(activeTab);
+    }
+    function isPlaceholderForeignHeader(header){
+      if (!Array.isArray(header) || header.length !== PLACEHOLDER_FOREIGN_HEADER.length) return false;
+      return PLACEHOLDER_FOREIGN_HEADER.every((name, idx) => String(header[idx] || "").trim() === name);
+    }
+    function normalizeForeignHeader(header){
+      if (!Array.isArray(header)) return [];
+      return header.map(name => (String(name || "").trim() === "\uBAAC\uACE8" ? "\uBABD\uACE8" : name));
+    }
+    function updateTabUI(){
+      const meta = getActiveMeta();
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === activeTab);
+      });
+      const totalTrendTitle = document.getElementById("totalTrendTitle");
+      if (totalTrendTitle) totalTrendTitle.textContent = meta.totalTrendTitle;
+      const topTrendTitle = document.getElementById("topTrendTitle");
+      if (topTrendTitle) topTrendTitle.textContent = meta.topTrendTitle;
+      const pieTitle = document.getElementById("pieTitle");
+      if (pieTitle) pieTitle.textContent = meta.distributionTitle;
+      const sumTitle = document.getElementById("sumTitle");
+      if (sumTitle) sumTitle.textContent = meta.sumTitle;
+      const sumHeaderText = document.querySelector("#sumHeaderLabel .sum-header-text");
+      if (sumHeaderText) sumHeaderText.textContent = meta.groupLabel;
+      const entryTitle = document.getElementById("entryTitle");
+      if (entryTitle) entryTitle.textContent = meta.entryTitle;
+      const entrySub = document.getElementById("entrySub");
+      if (entrySub) entrySub.textContent = meta.entrySub;
+      if (toggleEntryBtn) toggleEntryBtn.textContent = meta.toggleEntryLabel;
+    }
+    function setActiveTab(tab){
+      if (!TAB_META[tab] || tab === activeTab) return;
+      activeTab = tab;
+      localStorage.setItem("activeTab", activeTab);
+      updateTabUI();
+      buildEntryFields();
+      renderAll();
     }
     function normalizeHeader(raw){
       if (!raw) return [];
@@ -609,7 +744,15 @@
       return Number.isNaN(n) ? 0 : n;
     }
     function normalizeMetrics(metrics, len){
-      const arr = Array.isArray(metrics) ? metrics : [];
+      if (!len) return [];
+      let arr = [];
+      if (Array.isArray(metrics)){
+        arr = metrics;
+      }else if (metrics && typeof metrics === "object"){
+        arr = Object.keys(metrics)
+          .sort((a, b) => Number(a) - Number(b))
+          .map(key => metrics[key]);
+      }
       const out = new Array(len).fill(0);
       for (let i = 0; i < Math.min(arr.length, len); i++){
         out[i] = toNumber(arr[i]);
@@ -648,14 +791,22 @@
       const d = date.getDate();
       return `${y}.${m}.${d}`;
     }
-    function findTotalIndex(header){
+    function findTotalIndex(header, totalLabel){
       if (!header || !header.length) return -1;
-      const idx = header.findIndex(name => /\uCD1D\s*\uB0B4\uC6D0/i.test(name));
+      if (totalLabel){
+        const exactIdx = header.findIndex(name => String(name || "").trim() === totalLabel);
+        if (exactIdx >= 0) return exactIdx;
+      }
+      let idx = header.findIndex(name => /\uCD1D\s*\uB0B4\uC6D0/i.test(name));
+      if (idx >= 0) return idx;
+      idx = header.findIndex(name => /\uC678\uAD6D\uC778/i.test(name));
+      if (idx >= 0) return idx;
+      idx = header.findIndex(name => /\uCD1D\s*\uD569\uACC4|\uD569\uACC4/i.test(name));
       if (idx >= 0) return idx;
       return 0;
     }
-    function applyComputedTotal(metrics){
-      const totalIdx = findTotalIndex(state.header);
+    function applyComputedTotal(metrics, header, totalLabel){
+      const totalIdx = findTotalIndex(header, totalLabel);
       if (totalIdx < 0) return metrics;
       const total = metrics.reduce((sum, value, idx) => (idx === totalIdx ? sum : sum + (value || 0)), 0);
       metrics[totalIdx] = total;
@@ -663,7 +814,9 @@
     }
     function updateEntryTotal(){
       if (isUpdatingTotal) return;
-      const totalIdx = findTotalIndex(state.header);
+      const header = getActiveHeader();
+      const meta = getActiveMeta();
+      const totalIdx = findTotalIndex(header, meta.totalLabel);
       if (totalIdx < 0) return;
       isUpdatingTotal = true;
       try{
@@ -713,17 +866,19 @@
     }
 
     function buildEntryFields(){
-      if (!state.header.length){
+      const header = getActiveHeader();
+      if (!header.length){
         entryFields.innerHTML = '<div class="msg">\uD5E4\uB354 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</div>';
         return;
       }
-      const totalIdx = findTotalIndex(state.header);
+      const meta = getActiveMeta();
+      const totalIdx = findTotalIndex(header, meta.totalLabel);
       const prevDate = entryDateInput ? entryDateInput.value : "";
-      const headCells = state.header.map((name, idx) => {
+      const headCells = header.map((name, idx) => {
         const cls = idx === totalIdx ? "total-cell" : "";
         return `<th class="${cls}">${name}</th>`;
       }).join("");
-      const inputCells = state.header.map((_, idx) => {
+      const inputCells = header.map((_, idx) => {
         const id = `metric-${idx}`;
         const readonly = idx === totalIdx ? "readonly" : "";
         const cls = idx === totalIdx ? "total-cell" : "";
@@ -764,11 +919,19 @@
     function prefillEntry(dateISO){
       if (!dateISO) return;
       const row = state.rowsByDate[dateISO];
-      if (!row || !Array.isArray(row.metrics)){
+      const header = getActiveHeader();
+      const key = getActiveMetricsKey();
+      if (!row){
         clearEntryFields();
         return;
       }
-      const metrics = normalizeMetrics(row.metrics, state.header.length);
+      let raw = [];
+      if (key === "metrics"){
+        raw = row && row.metrics ? row.metrics : row;
+      }else{
+        raw = row && row.foreignMetrics ? row.foreignMetrics : [];
+      }
+      const metrics = normalizeMetrics(raw, header.length);
       metrics.forEach((val, idx) => {
         const input = document.getElementById(`metric-${idx}`);
         if (input) input.value = ((val === undefined || val === null) ? 0 : val);
@@ -776,10 +939,23 @@
       updateEntryTotal();
     }
     function collectEntryMetrics(){
-      return state.header.map((_, idx) => {
+      const header = getActiveHeader();
+      return header.map((_, idx) => {
         const input = document.getElementById(`metric-${idx}`);
         return toNumber(input ? input.value : 0);
       });
+    }
+    function buildRowPayload(dateISO, metrics, tab){
+      const existing = state.rowsByDate[dateISO];
+      const visitHeader = state.header;
+      const foreignHeader = state.foreignHeader;
+      const existingVisit = normalizeMetrics(existing && existing.metrics ? existing.metrics : existing, visitHeader.length);
+      const existingForeign = normalizeMetrics(existing && existing.foreignMetrics ? existing.foreignMetrics : [], foreignHeader.length);
+      const nextVisit = tab === TAB_VISITS ? normalizeMetrics(metrics, visitHeader.length) : existingVisit;
+      const nextForeign = tab === TAB_FOREIGN ? normalizeMetrics(metrics, foreignHeader.length) : existingForeign;
+      applyComputedTotal(nextVisit, visitHeader, TAB_META[TAB_VISITS].totalLabel);
+      applyComputedTotal(nextForeign, foreignHeader, TAB_META[TAB_FOREIGN].totalLabel);
+      return { metrics: nextVisit, foreignMetrics: nextForeign };
     }
     async function saveEntry(){
       const dateISO = getEntryDateISO();
@@ -789,15 +965,15 @@
       }
       updateEntryTotal();
       const metrics = collectEntryMetrics();
+      const payload = buildRowPayload(dateISO, metrics, activeTab);
       if (DATA_MODE === "local"){
-        updateLocalRow(dateISO, metrics);
+        updateLocalRow(dateISO, payload);
         setMsg("로컬 저장 완료", "success");
         return;
       }
-      const payload = { metrics, updatedAt: serverTimestamp() };
       try{
         btnEntrySave.disabled = true;
-        await set(ref(db, `${DB_ROOT}/rows/${dateISO}`), payload);
+        await set(ref(db, `${DB_ROOT}/rows/${dateISO}`), { ...payload, updatedAt: serverTimestamp() });
         setMsg("저장 완료", "success");
       }catch(err){
         setMsg(`저장 실패: ${err.message || err}`, "error");
@@ -811,7 +987,7 @@
         setMsg("삭제할 날짜를 선택하세요.", "error");
         return;
       }
-      if (!confirm(`${dateISO} 데이터를 삭제할까요?`)) return;
+      if (!confirm(`${dateISO} 데이터를 삭제할까요? (해당 날짜 전체 삭제)`)) return;
       if (DATA_MODE === "local"){
         const store = loadLocalStore();
         if (store.rows && store.rows[dateISO]){
@@ -842,12 +1018,12 @@
       if (!rows.length || hasCustomRange) return;
       if (startInput.value || endInput.value) return;
       const today = new Date();
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const hasThisMonth = rows.some(row => row.date && row.date >= monthStart && row.date <= monthEnd);
-      if (hasThisMonth){
-        startInput.value = formatISO(monthStart);
-        endInput.value = formatISO(monthEnd);
+      const rangeStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
+      const rangeEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const hasRecent = rows.some(row => row.date && row.date >= rangeStart && row.date <= rangeEnd);
+      if (hasRecent){
+        startInput.value = formatISO(rangeStart);
+        endInput.value = formatISO(rangeEnd);
         return;
       }
       const minDate = rows[0].date;
@@ -855,31 +1031,42 @@
       startInput.value = formatISO(minDate);
       endInput.value = formatISO(maxDate);
     }
-    function getFilteredRows(){
+    function getActiveRows(){
+      const header = getActiveHeader();
+      const key = getActiveMetricsKey();
+      return state.rows.map(row => ({
+        ...row,
+        metrics: normalizeMetrics(row[key], header.length)
+      }));
+    }
+    function getFilteredRows(rows){
       const startVal = startInput.value;
       const endVal = endInput.value;
       const start = startVal ? new Date(`${startVal}T00:00:00`) : null;
       const end = endVal ? new Date(`${endVal}T23:59:59`) : null;
-      return state.rows.filter(row => {
+      const list = rows || getActiveRows();
+      return list.filter(row => {
         if (!row.date) return false;
         if (start && row.date < start) return false;
         if (end && row.date > end) return false;
         return true;
       });
     }
-    function calcSums(rows){
-      const sums = new Array(state.header.length).fill(0);
+    function calcSums(rows, header){
+      const sums = new Array(header.length).fill(0);
       rows.forEach(row => {
         row.metrics.forEach((value, idx) => { sums[idx] += value || 0; });
       });
-      return state.header.map((name, idx) => ({ name, value: sums[idx] }));
+      return header.map((name, idx) => ({ name, value: sums[idx] }));
     }
     function renderCards(sums){
       if (!sums.length){
         document.getElementById("cards").innerHTML = "";
         return;
       }
-      const totalIdx = findTotalIndex(state.header);
+      const header = getActiveHeader();
+      const meta = getActiveMeta();
+      const totalIdx = findTotalIndex(header, meta.totalLabel);
       const total = totalIdx >= 0 ? sums[totalIdx].value : sums.reduce((acc, cur) => acc + cur.value, 0);
       const topRoutes = sums.map((item, idx) => ({ ...item, idx }))
         .filter(item => item.idx !== totalIdx)
@@ -887,7 +1074,7 @@
         .slice(0, 3);
       let cardsHTML = `
       <div class=\"card\">
-        <div class=\"t\">총 내원 수</div>
+        <div class=\"t\">${meta.totalLabel}</div>
         <div class=\"v\">${fmt(total)}</div>
       </div>
     `;
@@ -941,7 +1128,8 @@
         document.getElementById("dailyWrap").innerHTML = "<div class=\"msg\">표시할 데이터가 없습니다.</div>";
         return;
       }
-      const th = ["날짜", ...state.header].map((h, idx) => (
+      const header = getActiveHeader();
+      const th = ["날짜", ...header].map((h, idx) => (
         `<th onclick="sortTable('dailyBody', ${idx})">${h} <span class=\"sort-icon\">&#8597;</span></th>`
       )).join("");
       const body = rows.map(row => {
@@ -978,8 +1166,10 @@
 function createTrendChart(rows){
       const ctx = document.getElementById("trendChart");
       if (!ctx) return;
-      const totalIdx = findTotalIndex(state.header);
-      const routeTotals = state.header.map((name, idx) => ({
+      const header = getActiveHeader();
+      const meta = getActiveMeta();
+      const totalIdx = findTotalIndex(header, meta.totalLabel);
+      const routeTotals = header.map((name, idx) => ({
         name,
         index: idx,
         total: rows.reduce((sum, row) => sum + (row.metrics[idx] || 0), 0)
@@ -1033,7 +1223,9 @@ function createTrendChart(rows){
     function createPieChart(sums){
       const ctx = document.getElementById("pieChart");
       if (!ctx) return;
-      const totalIdx = findTotalIndex(state.header);
+      const header = getActiveHeader();
+      const meta = getActiveMeta();
+      const totalIdx = findTotalIndex(header, meta.totalLabel);
       const filtered = sums.filter((_, idx) => idx !== totalIdx);
       const labels = filtered.map(s => s.name);
       const data = filtered.map(s => s.value);
@@ -1048,7 +1240,9 @@ function createTrendChart(rows){
     function createTotalBarChart(rows){
       const ctx = document.getElementById("totalBarChart");
       if (!ctx) return;
-      const totalIdx = findTotalIndex(state.header);
+      const header = getActiveHeader();
+      const meta = getActiveMeta();
+      const totalIdx = findTotalIndex(header, meta.totalLabel);
       const labels = rows.map(r => {
         const label = r.date ? formatLabel(r.date) : r.dateISO;
         const parts = label.split(".");
@@ -1059,11 +1253,11 @@ function createTrendChart(rows){
       if (totalBarChart) totalBarChart.destroy();
       totalBarChart = new Chart(ctx, {
         type: "bar",
-        data: { labels, datasets: [{ label: "총 내원 수", data: totalData, backgroundColor: "rgba(37, 99, 235, 0.7)", borderColor: "#2563eb", borderWidth: 2, borderRadius: 6 }] },
+        data: { labels, datasets: [{ label: meta.totalLabel, data: totalData, backgroundColor: "rgba(37, 99, 235, 0.7)", borderColor: "#2563eb", borderWidth: 2, borderRadius: 6 }] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => `총 내원 수 ${context.parsed.y.toLocaleString()}명` } } },
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => `${meta.totalLabel} ${context.parsed.y.toLocaleString()}명` } } },
           scales: {
             y: {
               beginAtZero: true,
@@ -1115,12 +1309,13 @@ function createTrendChart(rows){
       totalBarChart.update();
     }
     function renderAll(){
-      if (!state.header.length){
+      const header = getActiveHeader();
+      if (!header.length){
         setMsg("헤더 정보를 불러오는 중...", "");
         return;
       }
-      const rows = getFilteredRows();
-      const sums = calcSums(rows);
+      const rows = getFilteredRows(getActiveRows());
+      const sums = calcSums(rows, header);
       renderCards(sums);
       renderSum(sums);
       renderDaily(rows);
@@ -1248,32 +1443,45 @@ function createTrendChart(rows){
       const header = (store && Array.isArray(store.header) && store.header.length)
         ? store.header
         : (base && base.header && base.header.length ? base.header : DEFAULT_HEADER);
+      const foreignHeader = (store && Array.isArray(store.foreignHeader) && store.foreignHeader.length)
+        ? store.foreignHeader
+        : DEFAULT_FOREIGN_HEADER;
+      const normalizedForeignHeader = isPlaceholderForeignHeader(foreignHeader)
+        ? DEFAULT_FOREIGN_HEADER
+        : normalizeForeignHeader(foreignHeader);
       const rowsByDate = {
         ...(base && base.rows ? base.rows : {}),
         ...(store && store.rows ? store.rows : {})
       };
       state.header = header;
+      state.foreignHeader = normalizedForeignHeader;
       state.rowsByDate = rowsByDate;
-      state.rows = Object.entries(state.rowsByDate).map(([dateISO, payload]) => {
-        const date = parseDateString(dateISO);
-        const metrics = normalizeMetrics(payload && payload.metrics ? payload.metrics : payload, state.header.length);
-        applyComputedTotal(metrics);
-        return { dateISO, date, metrics };
-      }).filter(row => row.date).sort((a, b) => a.date - b.date);
+      rebuildRows();
       buildEntryFields();
       setDefaultRange(state.rows);
       renderAll();
+    }
+    function rebuildRows(){
+      state.rows = Object.entries(state.rowsByDate).map(([dateISO, payload]) => {
+        const date = parseDateString(dateISO);
+        const metrics = normalizeMetrics(payload && payload.metrics ? payload.metrics : payload, state.header.length);
+        const foreignMetrics = normalizeMetrics(payload && payload.foreignMetrics ? payload.foreignMetrics : [], state.foreignHeader.length);
+        applyComputedTotal(metrics, state.header, TAB_META[TAB_VISITS].totalLabel);
+        applyComputedTotal(foreignMetrics, state.foreignHeader, TAB_META[TAB_FOREIGN].totalLabel);
+        return { dateISO, date, metrics, foreignMetrics };
+      }).filter(row => row.date).sort((a, b) => a.date - b.date);
     }
     function initLocal(){
       const embedded = getEmbeddedData();
       const store = loadLocalStore();
       applyLocalStore(store, embedded);
     }
-    function updateLocalRow(dateISO, metrics){
+    function updateLocalRow(dateISO, payload){
       const store = loadLocalStore();
       store.header = state.header;
+      store.foreignHeader = state.foreignHeader;
       store.rows = store.rows || {};
-      store.rows[dateISO] = { metrics, updatedAt: Date.now() };
+      store.rows[dateISO] = { ...payload, updatedAt: Date.now() };
       saveLocalStore(store);
       applyLocalStore(store, getEmbeddedData());
     }
@@ -1294,6 +1502,7 @@ function createTrendChart(rows){
     function subscribe(){
       setMsg("Firebase 연결 중...", "");
       const headerRef = ref(db, `${DB_ROOT}/meta/header`);
+      const foreignHeaderRef = ref(db, `${DB_ROOT}/meta/foreignHeader`);
       const rowsRef = ref(db, `${DB_ROOT}/rows`);
       onValue(headerRef, snapshot => {
         const header = normalizeHeader(snapshot.val());
@@ -1327,7 +1536,27 @@ function createTrendChart(rows){
             migratedSearchColumns = true;
           }
         }
-
+        rebuildRows();
+        buildEntryFields();
+        renderAll();
+      });
+      onValue(foreignHeaderRef, snapshot => {
+        const foreignHeader = normalizeHeader(snapshot.val());
+        foreignHeaderEmpty = foreignHeader.length === 0;
+        if (foreignHeaderEmpty){
+          state.foreignHeader = [...DEFAULT_FOREIGN_HEADER];
+          set(foreignHeaderRef, state.foreignHeader).catch(() => {});
+        }else{
+          let nextForeignHeader = isPlaceholderForeignHeader(foreignHeader)
+            ? [...DEFAULT_FOREIGN_HEADER]
+            : foreignHeader;
+          nextForeignHeader = normalizeForeignHeader(nextForeignHeader);
+          state.foreignHeader = nextForeignHeader;
+          if (JSON.stringify(nextForeignHeader) !== JSON.stringify(foreignHeader)){
+            set(foreignHeaderRef, nextForeignHeader).catch(() => {});
+          }
+        }
+        rebuildRows();
         buildEntryFields();
         renderAll();
       });
@@ -1363,21 +1592,22 @@ function createTrendChart(rows){
           update(rowsRef, state.rowsByDate).catch(() => {});
           migratedSearchColumns = false;
         }
-        state.rows = Object.entries(state.rowsByDate).map(([dateISO, payload]) => {
-          const date = parseDateString(dateISO);
-          const metrics = normalizeMetrics(payload && payload.metrics ? payload.metrics : payload, state.header.length);
-          applyComputedTotal(metrics);
-          return { dateISO, date, metrics };
-        }).filter(row => row.date).sort((a, b) => a.date - b.date);
+        rebuildRows();
         setDefaultRange(state.rows);
         renderAll();
       });
     }
     function init(){
       const savedTheme = localStorage.getItem("theme") || "light";
+      const savedTab = localStorage.getItem("activeTab");
+      if (TAB_META[savedTab]) activeTab = savedTab;
       document.documentElement.setAttribute("data-theme", savedTheme);
       themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
       themeToggle.addEventListener("click", toggleTheme);
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => setActiveTab(btn.dataset.tab));
+      });
+      updateTabUI();
       toggleEntryBtn.addEventListener("click", () => { entryPanel.classList.toggle("hidden"); });
       btnEntrySave.addEventListener("click", saveEntry);
       btnEntryClear.addEventListener("click", clearEntryFields);
