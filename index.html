@@ -397,7 +397,75 @@
       flex-wrap:wrap;
       margin-top:16px;
     }
-    .divider{ height:1px; background:var(--border); margin:18px 0; }    .hidden{ display:none; }
+    .foreign-header-manager{
+      border:1px dashed var(--border);
+      border-radius:12px;
+      padding:14px;
+      background:rgba(37,99,235,0.04);
+    }
+    .foreign-header-tools{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-bottom:8px;
+    }
+    .foreign-header-tools input{
+      height:40px;
+      min-width:220px;
+      flex:1;
+    }
+    .foreign-header-tools button{
+      height:40px;
+      min-width:100px;
+      padding:0 12px;
+      font-size:14px;
+    }
+    .foreign-header-list{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .foreign-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:6px 10px;
+      background:var(--panel);
+      font-size:13px;
+      font-weight:600;
+    }
+    .foreign-chip button{
+      height:26px;
+      min-width:auto;
+      padding:0 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      background:transparent;
+      color:var(--danger);
+      border:1px solid rgba(239,68,68,0.45);
+    }
+    .foreign-chip button:hover{
+      background:var(--danger);
+      color:#fff;
+      border-color:var(--danger);
+      transform:none;
+    }
+    .foreign-chip .fixed{
+      display:inline-flex;
+      align-items:center;
+      height:22px;
+      padding:0 8px;
+      border-radius:999px;
+      font-size:11px;
+      color:var(--muted);
+      border:1px solid var(--border);
+    }
+    .divider{ height:1px; background:var(--border); margin:18px 0; }
+    .hidden{ display:none; }
     @media (max-width:1100px){
       .grid{ grid-template-columns:1fr; }
       .grid-full{ grid-template-columns:1fr; }    }
@@ -453,6 +521,15 @@
       <h2><span id="entryTitle">입력 모드</span><span class="panel-sub" id="entrySub">일별 데이터를 추가/수정합니다.</span></h2>
       <div class="entry-grid">
         <div id="entryFields" class="entry-fields"></div>
+        <div id="foreignHeaderManager" class="foreign-header-manager hidden">
+          <label for="foreignHeaderInput">외국인 국가 항목 관리</label>
+          <div class="foreign-header-tools">
+            <input id="foreignHeaderInput" type="text" placeholder="추가할 국가명 입력 (예: 캐나다)" />
+            <button class="ghost" id="btnAddForeignHeader" type="button">항목 추가</button>
+          </div>
+          <div class="panel-sub">총 외국인 수는 자동 계산되며, 삭제 시 해당 국가 값은 모든 날짜에서 제거됩니다.</div>
+          <div id="foreignHeaderList" class="foreign-header-list"></div>
+        </div>
       </div>
       <div class="entry-actions">
         <button id="btnEntrySave">저장</button>
@@ -565,6 +642,7 @@
       "\uAD6D\uAC003",
       "\uAE30\uD0C0"
     ];
+    const FOREIGN_ETC_LABEL = "\uAE30\uD0C0";
     const TAB_VISITS = "visits";
     const TAB_FOREIGN = "foreign";
     const TAB_META = {
@@ -626,7 +704,12 @@
     const btnDeleteRow = document.getElementById("btnDeleteRow");
     const toggleEntryBtn = document.getElementById("toggleEntry");
     const themeToggle = document.getElementById("themeToggle");
+    const foreignHeaderManager = document.getElementById("foreignHeaderManager");
+    const foreignHeaderInput = document.getElementById("foreignHeaderInput");
+    const btnAddForeignHeader = document.getElementById("btnAddForeignHeader");
+    const foreignHeaderList = document.getElementById("foreignHeaderList");
     let selectedDateISO = "";
+    let isUpdatingForeignHeader = false;
     function fmt(n){ return Number(n || 0).toLocaleString(); }
     function setMsg(text, kind){
       const el = document.getElementById("msg");
@@ -664,6 +747,177 @@
       }
       return cleaned;
     }
+    function normalizeCategoryName(value){
+      return String(value || "").trim().replace(/\s+/g, " ");
+    }
+    function getForeignEtcIndex(header){
+      return header.findIndex(name => normalizeCategoryName(name) === FOREIGN_ETC_LABEL);
+    }
+    function isForeignCategoryRemovable(header, index){
+      const totalIdx = findTotalIndex(header, TAB_META[TAB_FOREIGN].totalLabel);
+      if (index === totalIdx) return false;
+      const nonTotalCount = header.filter((_, idx) => idx !== totalIdx).length;
+      return nonTotalCount > 1;
+    }
+    function remapForeignRows(nextHeader){
+      const prevHeader = Array.isArray(state.foreignHeader) ? state.foreignHeader : [];
+      const totalLabel = TAB_META[TAB_FOREIGN].totalLabel;
+      const prevTotalIdx = findTotalIndex(prevHeader, totalLabel);
+      const nextTotalIdx = findTotalIndex(nextHeader, totalLabel);
+      const remappedRows = {};
+      Object.entries(state.rowsByDate || {}).forEach(([dateISO, payload]) => {
+        const basePayload = (payload && typeof payload === "object" && !Array.isArray(payload)) ? payload : {};
+        const visitMetrics = basePayload.metrics !== undefined
+          ? basePayload.metrics
+          : normalizeMetrics(payload, state.header.length);
+        const prevForeignMetrics = normalizeMetrics(basePayload.foreignMetrics || [], prevHeader.length);
+        const nextForeignMetrics = new Array(nextHeader.length).fill(0);
+        nextHeader.forEach((name, idx) => {
+          if (idx === nextTotalIdx) return;
+          const prevIdx = prevHeader.findIndex((oldName, oldIdx) => (
+            oldIdx !== prevTotalIdx && normalizeCategoryName(oldName) === normalizeCategoryName(name)
+          ));
+          if (prevIdx >= 0){
+            nextForeignMetrics[idx] = prevForeignMetrics[prevIdx] || 0;
+          }
+        });
+        applyComputedTotal(nextForeignMetrics, nextHeader, totalLabel);
+        remappedRows[dateISO] = { ...basePayload, metrics: visitMetrics, foreignMetrics: nextForeignMetrics };
+      });
+      return remappedRows;
+    }
+    function renderForeignHeaderManager(){
+      if (!foreignHeaderManager || !foreignHeaderList) return;
+      const show = activeTab === TAB_FOREIGN;
+      foreignHeaderManager.classList.toggle("hidden", !show);
+      if (!show) return;
+      const header = Array.isArray(state.foreignHeader) ? state.foreignHeader : [];
+      foreignHeaderList.innerHTML = "";
+      header.forEach((name, idx) => {
+        const chip = document.createElement("div");
+        chip.className = "foreign-chip";
+        const label = document.createElement("span");
+        label.textContent = name;
+        chip.appendChild(label);
+        if (isForeignCategoryRemovable(header, idx)){
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.textContent = "삭제";
+          removeBtn.dataset.removeIndex = String(idx);
+          removeBtn.disabled = isUpdatingForeignHeader;
+          chip.appendChild(removeBtn);
+        }else{
+          const fixed = document.createElement("span");
+          fixed.className = "fixed";
+          fixed.textContent = "고정";
+          chip.appendChild(fixed);
+        }
+        foreignHeaderList.appendChild(chip);
+      });
+      if (foreignHeaderInput){
+        foreignHeaderInput.disabled = isUpdatingForeignHeader;
+      }
+      if (btnAddForeignHeader){
+        btnAddForeignHeader.disabled = isUpdatingForeignHeader;
+      }
+    }
+    async function applyForeignHeaderChange(nextHeader){
+      const totalLabel = TAB_META[TAB_FOREIGN].totalLabel;
+      let normalized = (nextHeader || [])
+        .map(normalizeCategoryName)
+        .filter(Boolean);
+      const totalIdx = normalized.findIndex(name => name === totalLabel);
+      if (totalIdx < 0){
+        normalized.unshift(totalLabel);
+      }else if (totalIdx !== 0){
+        normalized.splice(totalIdx, 1);
+        normalized.unshift(totalLabel);
+      }
+      const seen = new Set();
+      normalized = normalized.filter(name => {
+        const key = name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      if (normalized.length < 2){
+        setMsg("최소 1개 국가 항목은 필요합니다.", "error");
+        return false;
+      }
+      normalized = normalizeForeignHeader(normalized);
+      isUpdatingForeignHeader = true;
+      renderForeignHeaderManager();
+      try{
+        const remappedRows = remapForeignRows(normalized);
+        if (DATA_MODE === "local"){
+          const store = loadLocalStore();
+          store.header = state.header;
+          store.foreignHeader = normalized;
+          store.rows = remappedRows;
+          saveLocalStore(store);
+          applyLocalStore(store, getEmbeddedData());
+          setMsg("외국인 항목을 반영했습니다.", "success");
+          return true;
+        }
+        const foreignHeaderRef = ref(db, `${DB_ROOT}/meta/foreignHeader`);
+        const rowsRef = ref(db, `${DB_ROOT}/rows`);
+        const rowPatch = {};
+        Object.entries(remappedRows).forEach(([dateISO, payload]) => {
+          rowPatch[dateISO] = { ...payload, updatedAt: serverTimestamp() };
+        });
+        await set(foreignHeaderRef, normalized);
+        if (Object.keys(rowPatch).length){
+          await update(rowsRef, rowPatch);
+        }
+        setMsg("외국인 항목을 반영했습니다.", "success");
+        return true;
+      }catch(err){
+        setMsg(`외국인 항목 반영 실패: ${err.message || err}`, "error");
+        return false;
+      }finally{
+        isUpdatingForeignHeader = false;
+        renderForeignHeaderManager();
+      }
+    }
+    async function addForeignHeaderItem(){
+      if (activeTab !== TAB_FOREIGN){
+        setMsg("외국인 탭에서만 국가 항목을 관리할 수 있습니다.", "error");
+        return;
+      }
+      if (isUpdatingForeignHeader) return;
+      const inputName = normalizeCategoryName(foreignHeaderInput ? foreignHeaderInput.value : "");
+      if (!inputName){
+        setMsg("추가할 국가명을 입력하세요.", "error");
+        return;
+      }
+      const exists = state.foreignHeader.some(name => normalizeCategoryName(name).toLowerCase() === inputName.toLowerCase());
+      if (exists){
+        setMsg("이미 있는 국가 항목입니다.", "error");
+        return;
+      }
+      const nextHeader = [...state.foreignHeader];
+      const insertIdx = getForeignEtcIndex(nextHeader);
+      nextHeader.splice(insertIdx >= 0 ? insertIdx : nextHeader.length, 0, inputName);
+      const saved = await applyForeignHeaderChange(nextHeader);
+      if (saved && foreignHeaderInput){
+        foreignHeaderInput.value = "";
+        foreignHeaderInput.focus();
+      }
+    }
+    async function removeForeignHeaderItem(removeIndex){
+      if (activeTab !== TAB_FOREIGN) return;
+      if (isUpdatingForeignHeader) return;
+      const header = [...state.foreignHeader];
+      if (!Number.isInteger(removeIndex) || removeIndex < 0 || removeIndex >= header.length) return;
+      if (!isForeignCategoryRemovable(header, removeIndex)){
+        setMsg("해당 항목은 삭제할 수 없습니다.", "error");
+        return;
+      }
+      const targetName = header[removeIndex];
+      if (!confirm(`'${targetName}' 항목을 삭제할까요?`)) return;
+      header.splice(removeIndex, 1);
+      await applyForeignHeaderChange(header);
+    }
     function updateTabUI(){
       const meta = getActiveMeta();
       document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -684,6 +938,7 @@
       const entrySub = document.getElementById("entrySub");
       if (entrySub) entrySub.textContent = meta.entrySub;
       if (toggleEntryBtn) toggleEntryBtn.textContent = meta.toggleEntryLabel;
+      renderForeignHeaderManager();
     }
     function setActiveTab(tab){
       if (!TAB_META[tab] || tab === activeTab) return;
@@ -920,6 +1175,7 @@
         input.addEventListener("input", updateEntryTotal);
       });
       updateEntryTotal();
+      renderForeignHeaderManager();
     }
     function clearEntryFields(){
       entryFields.querySelectorAll("input[id^='metric-']").forEach(input => { input.value = ""; });
@@ -1621,6 +1877,26 @@ function createTrendChart(rows){
       btnEntrySave.addEventListener("click", saveEntry);
       btnEntryClear.addEventListener("click", clearEntryFields);
       btnDeleteRow.addEventListener("click", deleteEntry);
+      if (btnAddForeignHeader){
+        btnAddForeignHeader.addEventListener("click", addForeignHeaderItem);
+      }
+      if (foreignHeaderInput){
+        foreignHeaderInput.addEventListener("keydown", event => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          addForeignHeaderItem();
+        });
+      }
+      if (foreignHeaderList){
+        foreignHeaderList.addEventListener("click", event => {
+          const target = event.target instanceof Element ? event.target : null;
+          if (!target) return;
+          const removeBtn = target.closest("button[data-remove-index]");
+          if (!removeBtn) return;
+          const removeIndex = Number(removeBtn.dataset.removeIndex);
+          removeForeignHeaderItem(removeIndex);
+        });
+      }
       startInput.addEventListener("change", () => { hasCustomRange = true; });
       endInput.addEventListener("change", () => { hasCustomRange = true; });
       if (DATA_MODE === "local"){
