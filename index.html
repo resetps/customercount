@@ -464,6 +464,41 @@
       color:var(--muted);
       border:1px solid var(--border);
     }
+    .compare-panel{
+      margin-top:20px;
+      margin-bottom:20px;
+    }
+    .compare-controls{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .compare-controls label{
+      margin:0;
+      font-size:13px;
+      color:var(--muted);
+      font-weight:700;
+    }
+    .compare-select{
+      height:36px;
+      min-width:120px;
+      padding:0 10px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--text);
+      font-size:14px;
+      font-weight:600;
+    }
+    .compare-scroll{
+      max-height:380px;
+      overflow:auto;
+      width:100%;
+    }
+    .compare-delta-up{ color:var(--success); font-weight:700; }
+    .compare-delta-down{ color:var(--danger); font-weight:700; }
+    .compare-delta-flat{ color:var(--muted); font-weight:700; }
     .divider{ height:1px; background:var(--border); margin:18px 0; }
     .hidden{ display:none; }
     @media (max-width:1100px){
@@ -544,9 +579,22 @@
         <canvas id="totalBarChart"></canvas>
       </div>
     </div>
+    <div class="panel compare-panel hidden" id="visitsComparePanel">
+      <div class="panel-head">
+        <h2 id="visitsCompareTitle">내원수 주/월 비교</h2>
+        <div class="compare-controls">
+          <label for="visitsCompareUnit">집계</label>
+          <select id="visitsCompareUnit" class="compare-select">
+            <option value="week">주별</option>
+            <option value="month">월별</option>
+          </select>
+        </div>
+      </div>
+      <div class="compare-scroll" id="visitsCompareWrap"></div>
+    </div>
     <div class="grid-full">
       <div class="panel">
-        <h2 id="topTrendTitle">일별 상위 채널 추세</h2>
+        <h2 id="topTrendTitle">주별 총 내원수 추세</h2>
         <div class="chart-container">
           <canvas id="trendChart"></canvas>
         </div>
@@ -647,13 +695,16 @@
     const TAB_VISITS = "visits";
     const TAB_SURGERY = "surgery";
     const TAB_FOREIGN = "foreign";
+    const COMPARE_UNIT_WEEK = "week";
+    const COMPARE_UNIT_MONTH = "month";
+    const COMPARE_UNIT_STORAGE_KEY = "compareUnit";
     const TAB_META = {
       [TAB_VISITS]: {
         label: "\uB0B4\uC6D0\uC218",
         totalLabel: "\uCD1D \uB0B4\uC6D0 \uC218",
         groupLabel: "\uCC44\uB110",
         totalTrendTitle: "\uC77C\uBCC4 \uCD1D \uB0B4\uC6D0\uC218 \uCD94\uC138",
-        topTrendTitle: "\uC77C\uBCC4 \uC0C1\uC704 \uCC44\uB110 \uCD94\uC138",
+        topTrendTitle: "\uC8FC\uBCC4 \uCD1D \uB0B4\uC6D0\uC218 \uCD94\uC138",
         distributionTitle: "\uCC44\uB110\uBCC4 \uBD84\uD3EC",
         sumTitle: "\uCC44\uB110\uBCC4 \uD569\uACC4",
         entryTitle: "\uB0B4\uC6D0\uC218 \uC785\uB825 \uBAA8\uB4DC",
@@ -665,7 +716,7 @@
         totalLabel: "\uCD1D \uC218\uC220 \uC218",
         groupLabel: "\uCC44\uB110",
         totalTrendTitle: "\uC77C\uBCC4 \uCD1D \uC218\uC220\uC218 \uCD94\uC138",
-        topTrendTitle: "\uC77C\uBCC4 \uC0C1\uC704 \uCC44\uB110 \uCD94\uC138",
+        topTrendTitle: "\uC8FC\uBCC4 \uCD1D \uC218\uC220\uC218 \uCD94\uC138",
         distributionTitle: "\uCC44\uB110\uBCC4 \uBD84\uD3EC",
         sumTitle: "\uCC44\uB110\uBCC4 \uD569\uACC4",
         entryTitle: "\uC218\uC220\uC218 \uC785\uB825 \uBAA8\uB4DC",
@@ -677,7 +728,7 @@
         totalLabel: "\uC678\uAD6D\uC778 \uC218",
         groupLabel: "\uAD6D\uAC00",
         totalTrendTitle: "\uC77C\uBCC4 \uC678\uAD6D\uC778 \uCD94\uC138",
-        topTrendTitle: "\uC77C\uBCC4 \uC0C1\uC704 \uAD6D\uAC00 \uCD94\uC138",
+        topTrendTitle: "\uC8FC\uBCC4 \uCD1D \uC678\uAD6D\uC778 \uCD94\uC138",
         distributionTitle: "\uAD6D\uAC00\uBCC4 \uBD84\uD3EC",
         sumTitle: "\uAD6D\uAC00\uBCC4 \uD569\uACC4",
         entryTitle: "\uC678\uAD6D\uC778 \uC785\uB825 \uBAA8\uB4DC",
@@ -722,8 +773,12 @@
     const foreignHeaderInput = document.getElementById("foreignHeaderInput");
     const btnAddForeignHeader = document.getElementById("btnAddForeignHeader");
     const foreignHeaderList = document.getElementById("foreignHeaderList");
+    const visitsComparePanel = document.getElementById("visitsComparePanel");
+    const visitsCompareUnitSelect = document.getElementById("visitsCompareUnit");
+    const visitsCompareWrap = document.getElementById("visitsCompareWrap");
     let selectedDateISO = "";
     let isUpdatingForeignHeader = false;
+    let visitsCompareUnit = COMPARE_UNIT_WEEK;
     function fmt(n){ return Number(n || 0).toLocaleString(); }
     function setMsg(text, kind){
       const el = document.getElementById("msg");
@@ -1075,6 +1130,58 @@
       const m = date.getMonth() + 1;
       const d = date.getDate();
       return `${y}.${m}.${d}`;
+    }
+    function addDays(date, days){
+      const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      next.setDate(next.getDate() + days);
+      return next;
+    }
+    function getPeriodStart(date, unit){
+      const base = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      if (unit === COMPARE_UNIT_MONTH){
+        base.setDate(1);
+        return base;
+      }
+      const weekday = (base.getDay() + 6) % 7;
+      base.setDate(base.getDate() - weekday);
+      return base;
+    }
+    function formatPeriodLabel(startDate, unit){
+      if (unit === COMPARE_UNIT_MONTH){
+        const y = startDate.getFullYear();
+        const m = String(startDate.getMonth() + 1).padStart(2, "0");
+        return `${y}.${m}`;
+      }
+      const endDate = addDays(startDate, 6);
+      const weekLabel = formatWeekOfMonthLabel(startDate);
+      const startShort = `${startDate.getMonth() + 1}/${startDate.getDate()}`;
+      const endShort = `${endDate.getMonth() + 1}/${endDate.getDate()}`;
+      return `${weekLabel} (${startShort} ~ ${endShort})`;
+    }
+    function formatWeekOfMonthLabel(weekStartDate){
+      const month = weekStartDate.getMonth();
+      const firstOfMonth = new Date(weekStartDate.getFullYear(), month, 1);
+      const firstMonday = getPeriodStart(firstOfMonth, COMPARE_UNIT_WEEK).getMonth() === month
+        ? getPeriodStart(firstOfMonth, COMPARE_UNIT_WEEK)
+        : addDays(getPeriodStart(firstOfMonth, COMPARE_UNIT_WEEK), 7);
+      const diffDays = Math.round((weekStartDate - firstMonday) / 86400000);
+      const weekNo = Math.floor(diffDays / 7) + 1;
+      return `${month + 1}월 ${weekNo}주차`;
+    }
+    function getDeltaClass(change){
+      if (change > 0) return "compare-delta-up";
+      if (change < 0) return "compare-delta-down";
+      return "compare-delta-flat";
+    }
+    function formatSigned(value){
+      if (!Number.isFinite(value)) return "-";
+      const sign = value > 0 ? "+" : "";
+      return `${sign}${fmt(value)}`;
+    }
+    function formatRate(value){
+      if (!Number.isFinite(value)) return "-";
+      const sign = value > 0 ? "+" : "";
+      return `${sign}${value.toFixed(1)}%`;
     }
     function findTotalIndex(header, totalLabel){
       if (!header || !header.length) return -1;
@@ -1469,34 +1576,133 @@
         }
       }
     }
+    function buildVisitsCompareRows(rows, unit){
+      const header = getActiveHeader();
+      const meta = getActiveMeta();
+      const totalIdx = findTotalIndex(header, meta.totalLabel);
+      const grouped = new Map();
+      rows.forEach(row => {
+        if (!row.date) return;
+        const startDate = getPeriodStart(row.date, unit);
+        const key = formatISO(startDate);
+        if (!grouped.has(key)){
+          grouped.set(key, {
+            key,
+            startDate,
+            total: 0,
+            channelTotals: new Array(header.length).fill(0)
+          });
+        }
+        const bucket = grouped.get(key);
+        row.metrics.forEach((value, idx) => {
+          const n = value || 0;
+          bucket.channelTotals[idx] += n;
+          if (idx === totalIdx){
+            bucket.total += n;
+          }
+        });
+      });
+      const list = Array.from(grouped.values()).sort((a, b) => a.startDate - b.startDate);
+      return list.map((item, idx) => {
+        const prev = idx > 0 ? list[idx - 1] : null;
+        const change = prev ? item.total - prev.total : NaN;
+        const rate = prev && prev.total !== 0 ? ((change / prev.total) * 100) : NaN;
+        const topChannels = item.channelTotals
+          .map((value, channelIdx) => ({ name: header[channelIdx], value, channelIdx }))
+          .filter(channel => channel.channelIdx !== totalIdx && channel.value > 0)
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 3);
+        return {
+          label: formatPeriodLabel(item.startDate, unit),
+          total: item.total,
+          prevTotal: prev ? prev.total : NaN,
+          change,
+          rate,
+          topLabel: topChannels.length
+            ? topChannels.map(channel => `${channel.name} ${fmt(channel.value)}`).join(", ")
+            : "-"
+        };
+      });
+    }
+    function renderVisitsCompare(rows){
+      if (!visitsComparePanel || !visitsCompareWrap) return;
+      const show = Boolean(TAB_META[activeTab]);
+      visitsComparePanel.classList.toggle("hidden", !show);
+      if (!show) return;
+      const meta = getActiveMeta();
+      const compareTitle = document.getElementById("visitsCompareTitle");
+      if (compareTitle) compareTitle.textContent = `${meta.label} 주/월 비교`;
+      const unit = visitsCompareUnitSelect ? visitsCompareUnitSelect.value : visitsCompareUnit;
+      const compareRows = buildVisitsCompareRows(rows || [], unit);
+      if (!compareRows.length){
+        visitsCompareWrap.innerHTML = "<div class=\"msg\">비교할 데이터가 없습니다.</div>";
+        return;
+      }
+      const periodTitle = unit === COMPARE_UNIT_MONTH ? "월" : "주";
+      const totalColTitle = meta.totalLabel;
+      const topGroupTitle = `상위 ${meta.groupLabel} TOP3`;
+      const bodyHtml = compareRows.map(item => {
+        const deltaClass = getDeltaClass(item.change);
+        return `
+          <tr>
+            <td>${item.label}</td>
+            <td><b>${fmt(item.total)}</b></td>
+            <td>${Number.isFinite(item.prevTotal) ? fmt(item.prevTotal) : "-"}</td>
+            <td class="${deltaClass}">${formatSigned(item.change)}</td>
+            <td class="${deltaClass}">${formatRate(item.rate)}</td>
+            <td>${item.topLabel}</td>
+          </tr>
+        `;
+      }).join("");
+      visitsCompareWrap.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>${periodTitle}</th>
+              <th>${totalColTitle}</th>
+              <th>직전 ${periodTitle} 총합</th>
+              <th>증감</th>
+              <th>증감률</th>
+              <th>${topGroupTitle}</th>
+            </tr>
+          </thead>
+          <tbody>${bodyHtml}</tbody>
+        </table>
+      `;
+    }
 function createTrendChart(rows){
       const ctx = document.getElementById("trendChart");
       if (!ctx) return;
       const header = getActiveHeader();
       const meta = getActiveMeta();
       const totalIdx = findTotalIndex(header, meta.totalLabel);
-      const routeTotals = header.map((name, idx) => ({
-        name,
-        index: idx,
-        total: rows.reduce((sum, row) => sum + (row.metrics[idx] || 0), 0)
-      })).filter(route => route.index !== totalIdx);
-      const top5Routes = routeTotals.sort((a, b) => b.total - a.total).slice(0, 5);
-      const labels = rows.map(r => {
-        const label = r.date ? formatLabel(r.date) : r.dateISO;
-        return label.split(".").slice(1).join("/");
+      const weeklyMap = new Map();
+      rows.forEach(row => {
+        if (!row.date) return;
+        const weekStart = getPeriodStart(row.date, COMPARE_UNIT_WEEK);
+        const key = formatISO(weekStart);
+        if (!weeklyMap.has(key)){
+          weeklyMap.set(key, { weekStart, total: 0 });
+        }
+        const bucket = weeklyMap.get(key);
+        const value = totalIdx >= 0
+          ? (row.metrics[totalIdx] || 0)
+          : row.metrics.reduce((sum, v) => sum + (v || 0), 0);
+        bucket.total += value;
       });
-      const datasets = top5Routes.map((route, i) => ({
-        label: route.name,
-        data: rows.map(r => r.metrics[route.index] || 0),
-        borderWidth: 2,
-        tension: 0.4,
-        fill: false
-      }));
-      const colors = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
-      datasets.forEach((ds, i) => {
-        ds.borderColor = colors[i % colors.length];
-        ds.backgroundColor = colors[i % colors.length];
-      });
+      const weekly = Array.from(weeklyMap.values()).sort((a, b) => a.weekStart - b.weekStart);
+      const labels = weekly.map(item => formatWeekOfMonthLabel(item.weekStart));
+      const datasets = [{
+        label: meta.totalLabel,
+        data: weekly.map(item => item.total),
+        borderWidth: 3,
+        tension: 0.35,
+        fill: false,
+        borderColor: "#2563eb",
+        backgroundColor: "#2563eb",
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }];
       if (trendChart) trendChart.destroy();
       trendChart = new Chart(ctx, {
         type: "line",
@@ -1504,7 +1710,21 @@ function createTrendChart(rows){
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: "bottom", labels: { color: getComputedStyle(document.body).getPropertyValue("--text") } } },
+          plugins: {
+            legend: { position: "bottom", labels: { color: getComputedStyle(document.body).getPropertyValue("--text") } },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  if (!items || !items.length) return "";
+                  const idx = items[0].dataIndex;
+                  const row = weekly[idx];
+                  if (!row) return labels[idx] || "";
+                  const end = addDays(row.weekStart, 6);
+                  return [labels[idx], `${formatLabel(row.weekStart)}~${formatLabel(end)}`];
+                }
+              }
+            }
+          },
           scales: {
             y: {
               beginAtZero: true,
@@ -1514,11 +1734,11 @@ function createTrendChart(rows){
             x: {
               ticks: {
                 color: getComputedStyle(document.body).getPropertyValue("--muted"),
-                maxRotation: 45,
+                maxRotation: 0,
                 minRotation: 0,
                 font: { size: 10 },
                 autoSkip: true,
-                maxTicksLimit: 15
+                maxTicksLimit: 10
               },
               grid: { color: getComputedStyle(document.body).getPropertyValue("--border") }
             }
@@ -1625,6 +1845,7 @@ function createTrendChart(rows){
       renderCards(sums);
       renderSum(sums);
       renderDaily(rows);
+      renderVisitsCompare(rows);
       createTotalBarChart(rows);
       createTrendChart(rows);
       createPieChart(sums);
@@ -1910,7 +2131,11 @@ function createTrendChart(rows){
     function init(){
       const savedTheme = localStorage.getItem("theme") || "light";
       const savedTab = localStorage.getItem("activeTab");
+      const savedCompareUnit = localStorage.getItem(COMPARE_UNIT_STORAGE_KEY);
       if (TAB_META[savedTab]) activeTab = savedTab;
+      if (savedCompareUnit === COMPARE_UNIT_WEEK || savedCompareUnit === COMPARE_UNIT_MONTH){
+        visitsCompareUnit = savedCompareUnit;
+      }
       document.documentElement.setAttribute("data-theme", savedTheme);
       themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
       themeToggle.addEventListener("click", toggleTheme);
@@ -1922,6 +2147,15 @@ function createTrendChart(rows){
       btnEntrySave.addEventListener("click", saveEntry);
       btnEntryClear.addEventListener("click", clearEntryFields);
       btnDeleteRow.addEventListener("click", deleteEntry);
+      if (visitsCompareUnitSelect){
+        visitsCompareUnitSelect.value = visitsCompareUnit;
+        visitsCompareUnitSelect.addEventListener("change", () => {
+          const nextUnit = visitsCompareUnitSelect.value === COMPARE_UNIT_MONTH ? COMPARE_UNIT_MONTH : COMPARE_UNIT_WEEK;
+          visitsCompareUnit = nextUnit;
+          localStorage.setItem(COMPARE_UNIT_STORAGE_KEY, nextUnit);
+          renderAll();
+        });
+      }
       if (btnAddForeignHeader){
         btnAddForeignHeader.addEventListener("click", addForeignHeaderItem);
       }
