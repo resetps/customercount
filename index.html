@@ -514,6 +514,7 @@
   <div class="wrap">
     <div class="tabs" id="tabs">
       <button class="tab-btn active" data-tab="visits">내원수</button>
+      <button class="tab-btn" data-tab="surgery">수술수</button>
       <button class="tab-btn" data-tab="foreign">외국인</button>
     </div>
     <div id="msg" class="msg"></div>
@@ -644,6 +645,7 @@
     ];
     const FOREIGN_ETC_LABEL = "\uAE30\uD0C0";
     const TAB_VISITS = "visits";
+    const TAB_SURGERY = "surgery";
     const TAB_FOREIGN = "foreign";
     const TAB_META = {
       [TAB_VISITS]: {
@@ -657,6 +659,18 @@
         entryTitle: "\uB0B4\uC6D0\uC218 \uC785\uB825 \uBAA8\uB4DC",
         entrySub: "\uC77C\uBCC4 \uB0B4\uC6D0\uC218/\uACBD\uB85C \uB370\uC774\uD130\uB97C \uCD94\uAC00/\uC218\uC815\uD569\uB2C8\uB2E4.",
         toggleEntryLabel: "\uB0B4\uC6D0\uC218 \uC785\uB825 \uBAA8\uB4DC"
+      },
+      [TAB_SURGERY]: {
+        label: "\uC218\uC220\uC218",
+        totalLabel: "\uCD1D \uC218\uC220 \uC218",
+        groupLabel: "\uCC44\uB110",
+        totalTrendTitle: "\uC77C\uBCC4 \uCD1D \uC218\uC220\uC218 \uCD94\uC138",
+        topTrendTitle: "\uC77C\uBCC4 \uC0C1\uC704 \uCC44\uB110 \uCD94\uC138",
+        distributionTitle: "\uCC44\uB110\uBCC4 \uBD84\uD3EC",
+        sumTitle: "\uCC44\uB110\uBCC4 \uD569\uACC4",
+        entryTitle: "\uC218\uC220\uC218 \uC785\uB825 \uBAA8\uB4DC",
+        entrySub: "\uC77C\uBCC4 \uC218\uC220\uC218/\uACBD\uB85C \uB370\uC774\uD130\uB97C \uCD94\uAC00/\uC218\uC815\uD569\uB2C8\uB2E4.",
+        toggleEntryLabel: "\uC218\uC220\uC218 \uC785\uB825 \uBAA8\uB4DC"
       },
       [TAB_FOREIGN]: {
         label: "\uC678\uAD6D\uC778",
@@ -719,14 +733,21 @@
     function getActiveMeta(){
       return TAB_META[activeTab] || TAB_META[TAB_VISITS];
     }
+    function getSurgeryHeader(){
+      return (state.header || []).map(name => String(name || "").replace(/\uB0B4\uC6D0/g, "\uC218\uC220"));
+    }
     function getHeaderByTab(tab){
-      return tab === TAB_FOREIGN ? state.foreignHeader : state.header;
+      if (tab === TAB_FOREIGN) return state.foreignHeader;
+      if (tab === TAB_SURGERY) return getSurgeryHeader();
+      return state.header;
     }
     function getActiveHeader(){
       return getHeaderByTab(activeTab);
     }
     function getMetricsKeyByTab(tab){
-      return tab === TAB_FOREIGN ? "foreignMetrics" : "metrics";
+      if (tab === TAB_FOREIGN) return "foreignMetrics";
+      if (tab === TAB_SURGERY) return "surgeryMetrics";
+      return "metrics";
     }
     function getActiveMetricsKey(){
       return getMetricsKeyByTab(activeTab);
@@ -1193,6 +1214,13 @@
       let raw = [];
       if (key === "metrics"){
         raw = row && row.metrics ? row.metrics : row;
+      }else if (key === "surgeryMetrics"){
+        const hasSurgeryMetrics = row && typeof row === "object" && !Array.isArray(row) && Object.prototype.hasOwnProperty.call(row, "surgeryMetrics");
+        if (!hasSurgeryMetrics){
+          clearEntryFields();
+          return;
+        }
+        raw = row.surgeryMetrics;
       }else{
         raw = row && row.foreignMetrics ? row.foreignMetrics : [];
       }
@@ -1213,14 +1241,23 @@
     function buildRowPayload(dateISO, metrics, tab){
       const existing = state.rowsByDate[dateISO];
       const visitHeader = state.header;
+      const surgeryHeader = getHeaderByTab(TAB_SURGERY);
       const foreignHeader = state.foreignHeader;
       const existingVisit = normalizeMetrics(existing && existing.metrics ? existing.metrics : existing, visitHeader.length);
+      const hasSurgeryMetrics = existing && typeof existing === "object" && !Array.isArray(existing) && Object.prototype.hasOwnProperty.call(existing, "surgeryMetrics");
+      const existingSurgery = normalizeMetrics(hasSurgeryMetrics ? existing.surgeryMetrics : [], surgeryHeader.length);
       const existingForeign = normalizeMetrics(existing && existing.foreignMetrics ? existing.foreignMetrics : [], foreignHeader.length);
       const nextVisit = tab === TAB_VISITS ? normalizeMetrics(metrics, visitHeader.length) : existingVisit;
+      const nextSurgery = tab === TAB_SURGERY ? normalizeMetrics(metrics, surgeryHeader.length) : existingSurgery;
       const nextForeign = tab === TAB_FOREIGN ? normalizeMetrics(metrics, foreignHeader.length) : existingForeign;
       applyComputedTotal(nextVisit, visitHeader, TAB_META[TAB_VISITS].totalLabel);
+      applyComputedTotal(nextSurgery, surgeryHeader, TAB_META[TAB_SURGERY].totalLabel);
       applyComputedTotal(nextForeign, foreignHeader, TAB_META[TAB_FOREIGN].totalLabel);
-      return { metrics: nextVisit, foreignMetrics: nextForeign };
+      const nextPayload = { metrics: nextVisit, foreignMetrics: nextForeign };
+      if (tab === TAB_SURGERY || hasSurgeryMetrics){
+        nextPayload.surgeryMetrics = nextSurgery;
+      }
+      return nextPayload;
     }
     async function saveEntry(){
       const dateISO = getEntryDateISO();
@@ -1299,10 +1336,14 @@
     function getActiveRows(){
       const header = getActiveHeader();
       const key = getActiveMetricsKey();
-      return state.rows.map(row => ({
+      const rows = state.rows.map(row => ({
         ...row,
         metrics: normalizeMetrics(row[key], header.length)
       }));
+      if (activeTab === TAB_SURGERY){
+        return rows.filter(row => row.hasSurgeryMetrics);
+      }
+      return rows;
     }
     function getFilteredRows(rows){
       const startVal = startInput.value;
@@ -1727,13 +1768,17 @@ function createTrendChart(rows){
       renderAll();
     }
     function rebuildRows(){
+      const surgeryHeader = getHeaderByTab(TAB_SURGERY);
       state.rows = Object.entries(state.rowsByDate).map(([dateISO, payload]) => {
         const date = parseDateString(dateISO);
         const metrics = normalizeMetrics(payload && payload.metrics ? payload.metrics : payload, state.header.length);
+        const hasSurgeryMetrics = payload && typeof payload === "object" && !Array.isArray(payload) && Object.prototype.hasOwnProperty.call(payload, "surgeryMetrics");
+        const surgeryMetrics = normalizeMetrics(hasSurgeryMetrics ? payload.surgeryMetrics : [], surgeryHeader.length);
         const foreignMetrics = normalizeMetrics(payload && payload.foreignMetrics ? payload.foreignMetrics : [], state.foreignHeader.length);
         applyComputedTotal(metrics, state.header, TAB_META[TAB_VISITS].totalLabel);
+        applyComputedTotal(surgeryMetrics, surgeryHeader, TAB_META[TAB_SURGERY].totalLabel);
         applyComputedTotal(foreignMetrics, state.foreignHeader, TAB_META[TAB_FOREIGN].totalLabel);
-        return { dateISO, date, metrics, foreignMetrics };
+        return { dateISO, date, metrics, surgeryMetrics, hasSurgeryMetrics, foreignMetrics };
       }).filter(row => row.date).sort((a, b) => a.date - b.date);
     }
     function initLocal(){
