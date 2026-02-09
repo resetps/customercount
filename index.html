@@ -592,6 +592,20 @@
       </div>
       <div class="compare-scroll" id="visitsCompareWrap"></div>
     </div>
+    <div class="panel compare-panel hidden" id="weeklyMediaPanel">
+      <div class="panel-head">
+        <h2 id="weeklyMediaTitle">주차별 경로 집계</h2>
+        <div class="compare-controls">
+          <span class="panel-sub" id="weeklyMediaSub"></span>
+          <label for="weeklyMediaUnit">집계</label>
+          <select id="weeklyMediaUnit" class="compare-select">
+            <option value="week">주별</option>
+            <option value="month">월별</option>
+          </select>
+        </div>
+      </div>
+      <div class="compare-scroll" id="weeklyMediaWrap"></div>
+    </div>
     <div class="grid-full">
       <div class="panel">
         <h2 id="topTrendTitle">주별 총 내원수 추세</h2>
@@ -698,6 +712,7 @@
     const COMPARE_UNIT_WEEK = "week";
     const COMPARE_UNIT_MONTH = "month";
     const COMPARE_UNIT_STORAGE_KEY = "compareUnit";
+    const WEEKLY_MEDIA_UNIT_STORAGE_KEY = "weeklyMediaUnit";
     const TAB_META = {
       [TAB_VISITS]: {
         label: "\uB0B4\uC6D0\uC218",
@@ -776,9 +791,15 @@
     const visitsComparePanel = document.getElementById("visitsComparePanel");
     const visitsCompareUnitSelect = document.getElementById("visitsCompareUnit");
     const visitsCompareWrap = document.getElementById("visitsCompareWrap");
+    const weeklyMediaPanel = document.getElementById("weeklyMediaPanel");
+    const weeklyMediaTitle = document.getElementById("weeklyMediaTitle");
+    const weeklyMediaSub = document.getElementById("weeklyMediaSub");
+    const weeklyMediaUnitSelect = document.getElementById("weeklyMediaUnit");
+    const weeklyMediaWrap = document.getElementById("weeklyMediaWrap");
     let selectedDateISO = "";
     let isUpdatingForeignHeader = false;
     let visitsCompareUnit = COMPARE_UNIT_WEEK;
+    let weeklyMediaUnit = COMPARE_UNIT_WEEK;
     function fmt(n){ return Number(n || 0).toLocaleString(); }
     function setMsg(text, kind){
       const el = document.getElementById("msg");
@@ -1576,10 +1597,7 @@
         }
       }
     }
-    function buildVisitsCompareRows(rows, unit){
-      const header = getActiveHeader();
-      const meta = getActiveMeta();
-      const totalIdx = findTotalIndex(header, meta.totalLabel);
+    function buildGroupedBuckets(rows, header, totalIdx, unit){
       const grouped = new Map();
       rows.forEach(row => {
         if (!row.date) return;
@@ -1602,7 +1620,13 @@
           }
         });
       });
-      const list = Array.from(grouped.values()).sort((a, b) => a.startDate - b.startDate);
+      return Array.from(grouped.values()).sort((a, b) => a.startDate - b.startDate);
+    }
+    function buildVisitsCompareRows(rows, unit){
+      const header = getActiveHeader();
+      const meta = getActiveMeta();
+      const totalIdx = findTotalIndex(header, meta.totalLabel);
+      const list = buildGroupedBuckets(rows, header, totalIdx, unit);
       return list.map((item, idx) => {
         const prev = idx > 0 ? list[idx - 1] : null;
         const change = prev ? item.total - prev.total : NaN;
@@ -1664,6 +1688,61 @@
               <th>증감</th>
               <th>증감률</th>
               <th>${topGroupTitle}</th>
+            </tr>
+          </thead>
+          <tbody>${bodyHtml}</tbody>
+        </table>
+      `;
+    }
+    function renderWeeklyMediaPerformance(rows){
+      if (!weeklyMediaPanel || !weeklyMediaWrap) return;
+      const show = activeTab === TAB_VISITS || activeTab === TAB_SURGERY;
+      weeklyMediaPanel.classList.toggle("hidden", !show);
+      if (!show) return;
+      const header = getActiveHeader();
+      const meta = getActiveMeta();
+      const totalIdx = findTotalIndex(header, meta.totalLabel);
+      const unit = weeklyMediaUnitSelect ? weeklyMediaUnitSelect.value : weeklyMediaUnit;
+      const weekly = buildGroupedBuckets(rows || [], header, totalIdx, unit);
+      if (!weekly.length){
+        weeklyMediaWrap.innerHTML = "<div class=\"msg\">비교할 데이터가 없습니다.</div>";
+        if (weeklyMediaTitle) weeklyMediaTitle.textContent = `${meta.label} 주차별 ${meta.groupLabel} 집계`;
+        if (weeklyMediaSub) weeklyMediaSub.textContent = "";
+        return;
+      }
+      if (weeklyMediaTitle) weeklyMediaTitle.textContent = `${meta.label} 주차별 ${meta.groupLabel} 집계`;
+      if (weeklyMediaSub) weeklyMediaSub.textContent = "";
+
+      let channelColumns = header.map((name, idx) => ({ name, idx }))
+        .filter(item => item.idx !== totalIdx);
+      channelColumns = channelColumns.filter(item => weekly.some(week => (week.channelTotals[item.idx] || 0) > 0));
+      if (!channelColumns.length){
+        weeklyMediaWrap.innerHTML = "<div class=\"msg\">해당 기간에 집계된 경로 데이터가 없습니다.</div>";
+        return;
+      }
+
+      const totalColTitle = meta.totalLabel;
+      const headHtml = channelColumns.map(item => `<th>${item.name}</th>`).join("");
+      const bodyHtml = weekly.map(week => {
+        const label = formatPeriodLabel(week.startDate, unit);
+        const totalCell = `<td><b>${fmt(week.total || 0)}</b></td>`;
+        const cols = channelColumns.map(item => `<td>${fmt(week.channelTotals[item.idx] || 0)}</td>`).join("");
+        return `
+          <tr>
+            <td>${label}</td>
+            ${totalCell}
+            ${cols}
+          </tr>
+        `;
+      }).join("");
+      const periodTitle = unit === COMPARE_UNIT_MONTH ? "월" : "주차";
+      weeklyMediaWrap.innerHTML = `
+        <table class="weekly-media-table">
+          <thead>
+            <tr>
+              <th>${periodTitle}</th>
+              <th>${totalColTitle}</th>
+              ${headHtml}
             </tr>
           </thead>
           <tbody>${bodyHtml}</tbody>
@@ -1846,6 +1925,7 @@ function createTrendChart(rows){
       renderSum(sums);
       renderDaily(rows);
       renderVisitsCompare(rows);
+      renderWeeklyMediaPerformance(rows);
       createTotalBarChart(rows);
       createTrendChart(rows);
       createPieChart(sums);
@@ -2132,9 +2212,13 @@ function createTrendChart(rows){
       const savedTheme = localStorage.getItem("theme") || "light";
       const savedTab = localStorage.getItem("activeTab");
       const savedCompareUnit = localStorage.getItem(COMPARE_UNIT_STORAGE_KEY);
+      const savedWeeklyMediaUnit = localStorage.getItem(WEEKLY_MEDIA_UNIT_STORAGE_KEY);
       if (TAB_META[savedTab]) activeTab = savedTab;
       if (savedCompareUnit === COMPARE_UNIT_WEEK || savedCompareUnit === COMPARE_UNIT_MONTH){
         visitsCompareUnit = savedCompareUnit;
+      }
+      if (savedWeeklyMediaUnit === COMPARE_UNIT_WEEK || savedWeeklyMediaUnit === COMPARE_UNIT_MONTH){
+        weeklyMediaUnit = savedWeeklyMediaUnit;
       }
       document.documentElement.setAttribute("data-theme", savedTheme);
       themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
@@ -2153,6 +2237,15 @@ function createTrendChart(rows){
           const nextUnit = visitsCompareUnitSelect.value === COMPARE_UNIT_MONTH ? COMPARE_UNIT_MONTH : COMPARE_UNIT_WEEK;
           visitsCompareUnit = nextUnit;
           localStorage.setItem(COMPARE_UNIT_STORAGE_KEY, nextUnit);
+          renderAll();
+        });
+      }
+      if (weeklyMediaUnitSelect){
+        weeklyMediaUnitSelect.value = weeklyMediaUnit;
+        weeklyMediaUnitSelect.addEventListener("change", () => {
+          const nextUnit = weeklyMediaUnitSelect.value === COMPARE_UNIT_MONTH ? COMPARE_UNIT_MONTH : COMPARE_UNIT_WEEK;
+          weeklyMediaUnit = nextUnit;
+          localStorage.setItem(WEEKLY_MEDIA_UNIT_STORAGE_KEY, nextUnit);
           renderAll();
         });
       }
