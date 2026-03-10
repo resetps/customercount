@@ -665,6 +665,7 @@
     const GOOGLE_AD_LABEL = "\uAD11\uACE0(\uAD6C\uAE00)";
     const META_LABEL = "\uAD11\uACE0(\uBA54\uD0C0)";
     const GOOGLE_SEARCH_LABEL = "\uAC80\uC0C9(\uAD6C\uAE00)";
+    const TWITTER_X_LABEL = "\uD2B8\uC704\uD130(X)";
             const DEFAULT_HEADER = [
       "\uCD1D \uB0B4\uC6D0 \uC218",
       "\uAC80\uC0C9(\uB124\uC774\uBC84)",
@@ -673,6 +674,7 @@
       "\uAC15\uB0A8\uC5B8\uB2C8",
       "\uBC14\uBE44\uD1A1",
       "SNS",
+      "\uD2B8\uC704\uD130(X)",
       "\uBE14\uB85C\uADF8",
       "\uCE74\uD398",
       "\uC18C\uAC1C",
@@ -1093,6 +1095,23 @@
         const base = hasMetrics ? payload.metrics : payload;
         const metrics = normalizeMetrics(base, header.length);
         metrics.splice(metaIdx + 1, 0, 0);
+        nextRows[dateISO] = hasMetrics ? { ...payload, metrics } : metrics;
+      });
+      return { header: nextHeader, rowsByDate: nextRows, migrated: true };
+    }
+    function migrateTwitterXColumn(header, rowsByDate){
+      if (!header || !header.length) return { header, rowsByDate, migrated: false };
+      if (header.includes(TWITTER_X_LABEL)) return { header, rowsByDate, migrated: false };
+      const snsIdx = header.indexOf("SNS");
+      if (snsIdx < 0) return { header, rowsByDate, migrated: false };
+      const nextHeader = [...header];
+      nextHeader.splice(snsIdx + 1, 0, TWITTER_X_LABEL);
+      const nextRows = {};
+      Object.entries(rowsByDate || {}).forEach(([dateISO, payload]) => {
+        const hasMetrics = payload && typeof payload === "object" && !Array.isArray(payload) && Array.isArray(payload.metrics);
+        const base = hasMetrics ? payload.metrics : payload;
+        const metrics = normalizeMetrics(base, header.length);
+        metrics.splice(snsIdx + 1, 0, 0);
         nextRows[dateISO] = hasMetrics ? { ...payload, metrics } : metrics;
       });
       return { header: nextHeader, rowsByDate: nextRows, migrated: true };
@@ -2047,7 +2066,7 @@ function createTrendChart(rows){
     }
     function applyLocalStore(store, embedded){
       const base = embedded || null;
-      const header = (store && Array.isArray(store.header) && store.header.length)
+      let header = (store && Array.isArray(store.header) && store.header.length)
         ? store.header
         : (base && base.header && base.header.length ? base.header : DEFAULT_HEADER);
       const foreignHeader = (store && Array.isArray(store.foreignHeader) && store.foreignHeader.length)
@@ -2056,10 +2075,22 @@ function createTrendChart(rows){
       const normalizedForeignHeader = isPlaceholderForeignHeader(foreignHeader)
         ? DEFAULT_FOREIGN_HEADER
         : normalizeForeignHeader(foreignHeader);
-      const rowsByDate = {
+      let rowsByDate = {
         ...(base && base.rows ? base.rows : {}),
         ...(store && store.rows ? store.rows : {})
       };
+      const searchMigrated = migrateSearchColumns(header, rowsByDate);
+      header = searchMigrated.header;
+      rowsByDate = searchMigrated.rowsByDate;
+      const metaMigrated = migrateMetaLabel(header, rowsByDate);
+      header = metaMigrated.header;
+      rowsByDate = metaMigrated.rowsByDate;
+      const googleAdMigrated = migrateGoogleAdColumn(header, rowsByDate);
+      header = googleAdMigrated.header;
+      rowsByDate = googleAdMigrated.rowsByDate;
+      const twitterXMigrated = migrateTwitterXColumn(header, rowsByDate);
+      header = twitterXMigrated.header;
+      rowsByDate = twitterXMigrated.rowsByDate;
       state.header = header;
       state.foreignHeader = normalizedForeignHeader;
       state.rowsByDate = rowsByDate;
@@ -2146,6 +2177,12 @@ function createTrendChart(rows){
             state.rowsByDate = googleAdMigrated.rowsByDate;
             migratedSearchColumns = true;
           }
+          const twitterXMigrated = migrateTwitterXColumn(state.header, state.rowsByDate);
+          if (twitterXMigrated.migrated){
+            state.header = twitterXMigrated.header;
+            state.rowsByDate = twitterXMigrated.rowsByDate;
+            migratedSearchColumns = true;
+          }
         }
         rebuildRows();
         buildEntryFields();
@@ -2189,6 +2226,12 @@ function createTrendChart(rows){
           if (googleAdMigrated.migrated){
             state.header = googleAdMigrated.header;
             state.rowsByDate = googleAdMigrated.rowsByDate;
+            migratedSearchColumns = true;
+          }
+          const twitterXMigrated = migrateTwitterXColumn(state.header, state.rowsByDate);
+          if (twitterXMigrated.migrated){
+            state.header = twitterXMigrated.header;
+            state.rowsByDate = twitterXMigrated.rowsByDate;
             migratedSearchColumns = true;
           }
         }
