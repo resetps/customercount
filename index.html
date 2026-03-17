@@ -205,6 +205,12 @@
       font-weight:900;
       margin-top:12px;
     }
+    .card .note{
+      margin-top:10px;
+      font-size:13px;
+      color:var(--muted);
+      font-weight:600;
+    }
     .grid{
       display:grid;
       grid-template-columns:500px 1fr;
@@ -551,6 +557,7 @@
       <button class="tab-btn active" data-tab="visits">내원수</button>
       <button class="tab-btn" data-tab="surgery">수술수</button>
       <button class="tab-btn" data-tab="foreign">외국인</button>
+      <button class="tab-btn" data-tab="visitRate">내원율</button>
     </div>
     <div id="msg" class="msg"></div>
     <div id="entryPanel" class="panel entry-panel hidden">
@@ -665,6 +672,7 @@
     const GOOGLE_AD_LABEL = "\uAD11\uACE0(\uAD6C\uAE00)";
     const META_LABEL = "\uAD11\uACE0(\uBA54\uD0C0)";
     const GOOGLE_SEARCH_LABEL = "\uAC80\uC0C9(\uAD6C\uAE00)";
+    const TWITTER_X_LABEL = "\uD2B8\uC704\uD130(X)";
             const DEFAULT_HEADER = [
       "\uCD1D \uB0B4\uC6D0 \uC218",
       "\uAC80\uC0C9(\uB124\uC774\uBC84)",
@@ -673,6 +681,7 @@
       "\uAC15\uB0A8\uC5B8\uB2C8",
       "\uBC14\uBE44\uD1A1",
       "SNS",
+      "\uD2B8\uC704\uD130(X)",
       "\uBE14\uB85C\uADF8",
       "\uCE74\uD398",
       "\uC18C\uAC1C",
@@ -709,10 +718,12 @@
     const TAB_VISITS = "visits";
     const TAB_SURGERY = "surgery";
     const TAB_FOREIGN = "foreign";
+    const TAB_VISIT_RATE = "visitRate";
     const COMPARE_UNIT_WEEK = "week";
     const COMPARE_UNIT_MONTH = "month";
     const COMPARE_UNIT_STORAGE_KEY = "compareUnit";
     const WEEKLY_MEDIA_UNIT_STORAGE_KEY = "weeklyMediaUnit";
+    const VISIT_RATE_DB_KEY = "visitRateWeeks";
     const TAB_META = {
       [TAB_VISITS]: {
         label: "\uB0B4\uC6D0\uC218",
@@ -749,6 +760,18 @@
         entryTitle: "\uC678\uAD6D\uC778 \uC785\uB825 \uBAA8\uB4DC",
         entrySub: "\uC77C\uBCC4 \uC678\uAD6D\uC778/\uAD6D\uAC00 \uB370\uC774\uD130\uB97C \uCD94\uAC00/\uC218\uC815\uD569\uB2C8\uB2E4.",
         toggleEntryLabel: "\uC678\uAD6D\uC778 \uC785\uB825 \uBAA8\uB4DC"
+      },
+      [TAB_VISIT_RATE]: {
+        label: "\uB0B4\uC6D0\uC728",
+        totalLabel: "\uCD1D \uC608\uC57D \uC218",
+        groupLabel: "\uD56D\uBAA9",
+        totalTrendTitle: "\uC8FC\uCC28\uBCC4 \uC608\uC57D/\uB0B4\uC6D0 \uCD94\uC138",
+        topTrendTitle: "\uC8FC\uCC28\uBCC4 \uB0B4\uC6D0\uC728 \uCD94\uC138",
+        distributionTitle: "\uC804\uCCB4 \uB0B4\uC6D0/\uBBF8\uB0B4\uC6D0 \uBD84\uD3EC",
+        sumTitle: "\uB0B4\uC6D0\uC728 \uC694\uC57D",
+        entryTitle: "\uB0B4\uC6D0\uC728 \uC785\uB825 \uBAA8\uB4DC",
+        entrySub: "\uC8FC\uCC28\uBCC4 \uC608\uC57D \uC218\uC640 \uB0B4\uC6D0 \uC218\uB97C \uC785\uB825\uD558\uBA74 \uB0B4\uC6D0\uC728\uACFC \uC804\uC8FC \uB300\uBE44 \uC99D\uAC10\uC774 \uACC4\uC0B0\uB429\uB2C8\uB2E4.",
+        toggleEntryLabel: "\uB0B4\uC6D0\uC728 \uC785\uB825 \uBAA8\uB4DC"
       }
     };
     const EMBEDDED_CSV = "내원 수,,,,,,,,,,,,,,,,기간,,\n,,,,,,,,,,,,,,,,2025-12-03,2025-12-31,←기간 별 필터링\n합계,150,19,5,33,24,6,0,5,13,0,4,4,5,27,5,,,\n날짜,총 내원 수,검색(네이버),검색(구글),홈페이지,강남언니,바비톡,SNS,블로그,카페,소개,워크인,유튜브,리얼모델,해외 에이전시,광고(메타),광고(구글),기타,,,\n2025.1.1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.2,11,0,0,0,1,2,1,0,0,2,0,0,0,2,3,0,0,,,\n2025.1.3,11,2,0,0,3,0,1,0,0,0,0,0,1,0,4,0,0,,,\n2025.1.4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.6,13,1,0,0,2,1,0,0,1,1,0,4,1,0,1,0,1,,,\n2025.1.7,9,2,0,0,1,0,0,0,0,3,0,0,0,0,3,0,0,,,\n2025.1.8,7,1,0,0,0,0,0,0,0,2,0,0,1,0,2,0,1,,,\n2025.1.9,12,1,0,1,8,0,0,0,0,1,0,0,0,0,1,0,0,,,\n2025.1.10,6,2,0,1,1,0,0,0,0,0,0,0,0,0,2,0,0,,,\n2025.1.11,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.12,8,0,0,1,1,3,1,0,0,1,0,0,0,1,0,0,0,,,\n2025.1.13,12,0,0,0,4,3,0,0,1,0,0,0,1,0,2,0,1,,,\n2025.1.14,14,3,0,1,4,3,0,0,0,1,0,0,0,0,2,0,0,,,\n2025.1.15,7,2,0,0,1,1,1,0,0,1,0,0,0,0,1,0,0,,,\n2025.1.16,5,1,0,0,2,1,0,0,0,0,0,0,0,1,0,0,0,,,\n2025.1.17,5,0,0,0,2,2,0,0,0,0,0,0,0,0,1,0,0,,,\n2025.1.18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,,,\n2025.1.19,6,1,0,1,0,1,0,0,2,0,0,0,0,0,1,0,0,,,\n2025.1.20,8,1,0,0,1,3,1,0,0,0,0,0,0,1,1,0,0,,,\n2025.1.21,6,1,0,0,0,1,1,0,1,0,0,0,0,0,2,0,0,,,\n2025.1.22,5,1,0,0,1,1,0,0,0,0,0,0,0,0,1,0,1,,,\n2025.1.23,5,0,0,0,1,2,0,0,0,1,0,0,0,0,0,0,1,,,\n2025.1.24,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.25,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.26,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.27,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.28,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.29,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.30,0,,0,,,,,,,,,,,,,0,,,,\n2025.1.31,0,,0,,,,,,,,,,,,,0,,,,\n";
@@ -762,7 +785,7 @@
     const serverTimestamp = () => firebase.database.ServerValue.TIMESTAMP;
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const state = { header: [], foreignHeader: [], rowsByDate: {}, rows: [] };
+    const state = { header: [], foreignHeader: [], rowsByDate: {}, rows: [], visitRateByWeek: {}, visitRateRows: [] };
     let trendChart;
     let pieChart;
     let totalBarChart;
@@ -1030,16 +1053,25 @@
       if (sumTitle) sumTitle.textContent = meta.sumTitle;
       const sumHeaderText = document.querySelector("#sumHeaderLabel .sum-header-text");
       if (sumHeaderText) sumHeaderText.textContent = meta.groupLabel;
+      const dailyTitle = document.getElementById("dailyTitle");
+      if (dailyTitle) dailyTitle.textContent = activeTab === TAB_VISIT_RATE ? "주차별 상세" : "일자별 상세";
       const entryTitle = document.getElementById("entryTitle");
       if (entryTitle) entryTitle.textContent = meta.entryTitle;
       const entrySub = document.getElementById("entrySub");
       if (entrySub) entrySub.textContent = meta.entrySub;
       if (toggleEntryBtn) toggleEntryBtn.textContent = meta.toggleEntryLabel;
+      if (btnDeleteRow) btnDeleteRow.textContent = activeTab === TAB_VISIT_RATE ? "주차 삭제" : "날짜 삭제";
       renderForeignHeaderManager();
     }
     function setActiveTab(tab){
       if (!TAB_META[tab] || tab === activeTab) return;
+      const wasVisitRate = activeTab === TAB_VISIT_RATE;
+      const willVisitRate = tab === TAB_VISIT_RATE;
       activeTab = tab;
+      if (wasVisitRate !== willVisitRate){
+        selectedDateISO = "";
+        if (entryDateInput) entryDateInput.value = "";
+      }
       localStorage.setItem("activeTab", activeTab);
       updateTabUI();
       buildEntryFields();
@@ -1096,6 +1128,106 @@
         nextRows[dateISO] = hasMetrics ? { ...payload, metrics } : metrics;
       });
       return { header: nextHeader, rowsByDate: nextRows, migrated: true };
+    }
+    function migrateTwitterXColumn(header, rowsByDate){
+      if (!header || !header.length) return { header, rowsByDate, migrated: false };
+      if (header.includes(TWITTER_X_LABEL)) return { header, rowsByDate, migrated: false };
+      const snsIdx = header.indexOf("SNS");
+      if (snsIdx < 0) return { header, rowsByDate, migrated: false };
+      const nextHeader = [...header];
+      nextHeader.splice(snsIdx + 1, 0, TWITTER_X_LABEL);
+      const nextRows = {};
+      Object.entries(rowsByDate || {}).forEach(([dateISO, payload]) => {
+        const hasMetrics = payload && typeof payload === "object" && !Array.isArray(payload) && Array.isArray(payload.metrics);
+        const base = hasMetrics ? payload.metrics : payload;
+        const metrics = normalizeMetrics(base, header.length);
+        metrics.splice(snsIdx + 1, 0, 0);
+        nextRows[dateISO] = hasMetrics ? { ...payload, metrics } : metrics;
+      });
+      return { header: nextHeader, rowsByDate: nextRows, migrated: true };
+    }
+    function upgradeLegacyVisitMetrics(rawMetrics, targetLen){
+      let arr = [];
+      if (Array.isArray(rawMetrics)){
+        arr = [...rawMetrics];
+      }else if (rawMetrics && typeof rawMetrics === "object"){
+        arr = Object.keys(rawMetrics)
+          .sort((a, b) => Number(a) - Number(b))
+          .map(key => rawMetrics[key]);
+      }
+      let migrated = false;
+      while (arr.length < targetLen){
+        if (arr.length === 15){
+          arr.splice(2, 0, 0);
+          migrated = true;
+          continue;
+        }
+        if (arr.length === 16){
+          arr.splice(15, 0, 0);
+          migrated = true;
+          continue;
+        }
+        if (arr.length === 17){
+          arr.splice(7, 0, 0);
+          migrated = true;
+          continue;
+        }
+        break;
+      }
+      return { metrics: arr, migrated };
+    }
+    function repairVisitRowsToHeader(header, rowsByDate){
+      const targetLen = Array.isArray(header) ? header.length : 0;
+      if (!targetLen || !rowsByDate || typeof rowsByDate !== "object"){
+        return { rowsByDate, migrated: false };
+      }
+      const nextRows = {};
+      let migrated = false;
+      Object.entries(rowsByDate).forEach(([dateISO, payload]) => {
+        if (payload && typeof payload === "object" && !Array.isArray(payload)){
+          const nextPayload = { ...payload };
+          const visitSource = Object.prototype.hasOwnProperty.call(payload, "metrics") ? payload.metrics : payload;
+          const visitRepair = upgradeLegacyVisitMetrics(visitSource, targetLen);
+          if (visitRepair.migrated) migrated = true;
+          nextPayload.metrics = visitRepair.metrics;
+          if (Object.prototype.hasOwnProperty.call(payload, "surgeryMetrics")){
+            const surgeryRepair = upgradeLegacyVisitMetrics(payload.surgeryMetrics || [], targetLen);
+            if (surgeryRepair.migrated) migrated = true;
+            nextPayload.surgeryMetrics = surgeryRepair.metrics;
+          }
+          nextRows[dateISO] = nextPayload;
+          return;
+        }
+        const visitRepair = upgradeLegacyVisitMetrics(payload, targetLen);
+        if (visitRepair.migrated) migrated = true;
+        nextRows[dateISO] = visitRepair.metrics;
+      });
+      return { rowsByDate: migrated ? nextRows : rowsByDate, migrated };
+    }
+    function applyVisitMigrations(header, rowsByDate){
+      let nextHeader = header;
+      let nextRows = rowsByDate;
+      let migrated = false;
+      const searchMigrated = migrateSearchColumns(nextHeader, nextRows);
+      nextHeader = searchMigrated.header;
+      nextRows = searchMigrated.rowsByDate;
+      migrated = migrated || searchMigrated.migrated;
+      const metaMigrated = migrateMetaLabel(nextHeader, nextRows);
+      nextHeader = metaMigrated.header;
+      nextRows = metaMigrated.rowsByDate;
+      migrated = migrated || metaMigrated.migrated;
+      const googleAdMigrated = migrateGoogleAdColumn(nextHeader, nextRows);
+      nextHeader = googleAdMigrated.header;
+      nextRows = googleAdMigrated.rowsByDate;
+      migrated = migrated || googleAdMigrated.migrated;
+      const twitterXMigrated = migrateTwitterXColumn(nextHeader, nextRows);
+      nextHeader = twitterXMigrated.header;
+      nextRows = twitterXMigrated.rowsByDate;
+      migrated = migrated || twitterXMigrated.migrated;
+      const repairedRows = repairVisitRowsToHeader(nextHeader, nextRows);
+      nextRows = repairedRows.rowsByDate;
+      migrated = migrated || repairedRows.migrated;
+      return { header: nextHeader, rowsByDate: nextRows, migrated };
     }
 
     function toNumber(v){
@@ -1204,6 +1336,77 @@
       const sign = value > 0 ? "+" : "";
       return `${sign}${value.toFixed(1)}%`;
     }
+    function formatPlainRate(value){
+      if (!Number.isFinite(value)) return "-";
+      return `${value.toFixed(1)}%`;
+    }
+    function formatRatePointChange(value){
+      if (!Number.isFinite(value)) return "-";
+      const sign = value > 0 ? "+" : "";
+      return `${sign}${value.toFixed(1)}%p`;
+    }
+    function escapeHtml(value){
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+    function calcVisitRatePercent(reservationCount, visitCount){
+      const reservation = toNumber(reservationCount);
+      const visits = toNumber(visitCount);
+      if (reservation <= 0) return NaN;
+      return (visits / reservation) * 100;
+    }
+    function getVisitRateLabel(row){
+      if (!row) return "";
+      const customLabel = String(row.label || "").trim();
+      if (customLabel) return customLabel;
+      return formatPeriodLabel(row.weekStart, COMPARE_UNIT_WEEK);
+    }
+    function rebuildVisitRateRows(){
+      state.visitRateRows = Object.entries(state.visitRateByWeek || {})
+        .map(([weekISO, payload]) => {
+          const weekStart = parseDateString(weekISO);
+          if (!weekStart) return null;
+          const base = payload && typeof payload === "object" ? payload : {};
+          const reservationCount = toNumber(base.reservationCount);
+          const visitCount = toNumber(base.visitCount);
+          return {
+            weekISO,
+            weekStart,
+            label: String(base.label || "").trim(),
+            reservationCount,
+            visitCount,
+            visitRate: calcVisitRatePercent(reservationCount, visitCount),
+            updatedAt: base.updatedAt || null
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.weekStart - b.weekStart)
+        .map((row, idx, list) => {
+          const prev = idx > 0 ? list[idx - 1] : null;
+          return {
+            ...row,
+            prevVisitRate: prev ? prev.visitRate : NaN,
+            deltaVisitRate: prev ? row.visitRate - prev.visitRate : NaN
+          };
+        });
+    }
+    function getFilteredVisitRateRows(rows){
+      const startVal = startInput.value;
+      const endVal = endInput.value;
+      const start = startVal ? new Date(`${startVal}T00:00:00`) : null;
+      const end = endVal ? new Date(`${endVal}T23:59:59`) : null;
+      const list = Array.isArray(rows) ? rows : state.visitRateRows;
+      return list.filter(row => {
+        if (!row.weekStart) return false;
+        if (start && row.weekStart < start) return false;
+        if (end && row.weekStart > end) return false;
+        return true;
+      });
+    }
     function findTotalIndex(header, totalLabel){
       if (!header || !header.length) return -1;
       if (totalLabel){
@@ -1226,6 +1429,10 @@
       return metrics;
     }
     function updateEntryTotal(){
+      if (activeTab === TAB_VISIT_RATE){
+        updateVisitRateEntryPreview();
+        return;
+      }
       if (isUpdatingTotal) return;
       const header = getActiveHeader();
       const meta = getActiveMeta();
@@ -1243,11 +1450,27 @@
         isUpdatingTotal = false;
       }
     }
+    function updateVisitRateEntryPreview(){
+      const reservationInput = document.getElementById("visitRateReservation");
+      const visitInput = document.getElementById("visitRateVisit");
+      const percentInput = document.getElementById("visitRatePercent");
+      if (!percentInput) return;
+      const reservationCount = toNumber(reservationInput ? reservationInput.value : 0);
+      const visitCount = toNumber(visitInput ? visitInput.value : 0);
+      const visitRate = calcVisitRatePercent(reservationCount, visitCount);
+      percentInput.value = Number.isFinite(visitRate) ? `${visitRate.toFixed(1)}%` : "-";
+    }
     function getEntryDateISO(){
       if (!entryDateInput) return "";
       const date = parseDateString(entryDateInput.value);
       if (!date) return "";
-      return formatISO(date);
+      const normalizedDate = activeTab === TAB_VISIT_RATE
+        ? getPeriodStart(date, COMPARE_UNIT_WEEK)
+        : date;
+      if (activeTab === TAB_VISIT_RATE && entryDateInput){
+        entryDateInput.value = formatISO(normalizedDate);
+      }
+      return formatISO(normalizedDate);
     }
     function handleEntryDateChange(){
       const dateISO = getEntryDateISO();
@@ -1279,6 +1502,50 @@
     }
 
     function buildEntryFields(){
+      if (activeTab === TAB_VISIT_RATE){
+        const prevDate = entryDateInput ? entryDateInput.value : "";
+        entryFields.innerHTML = `
+          <div class="entry-scroll">
+            <table class="entry-table">
+              <thead>
+                <tr>
+                  <th>주 시작일</th>
+                  <th>주차명(선택)</th>
+                  <th>총 예약 수</th>
+                  <th>내원 수</th>
+                  <th>내원율</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><input id="entryDate" type="date" /></td>
+                  <td><input id="visitRateLabel" type="text" placeholder="예: 3월 2째주" /></td>
+                  <td><input id="visitRateReservation" type="number" min="0" step="1" placeholder="0" /></td>
+                  <td><input id="visitRateVisit" type="number" min="0" step="1" placeholder="0" /></td>
+                  <td class="total-cell"><input id="visitRatePercent" type="text" readonly value="-" /></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        `;
+        entryDateInput = document.getElementById("entryDate");
+        if (prevDate) entryDateInput.value = prevDate;
+        entryDateInput.addEventListener("change", handleEntryDateChange);
+        entryDateInput.addEventListener("blur", handleEntryDateChange);
+        ["visitRateReservation", "visitRateVisit"].forEach(id => {
+          const input = document.getElementById(id);
+          if (input){
+            input.addEventListener("input", updateVisitRateEntryPreview);
+          }
+        });
+        if (entryDateInput.value){
+          prefillEntry(getEntryDateISO());
+        }else{
+          updateVisitRateEntryPreview();
+        }
+        renderForeignHeaderManager();
+        return;
+      }
       const header = getActiveHeader();
       if (!header.length){
         entryFields.innerHTML = '<div class="msg">\uD5E4\uB354 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.</div>';
@@ -1327,11 +1594,42 @@
       renderForeignHeaderManager();
     }
     function clearEntryFields(){
+      if (activeTab === TAB_VISIT_RATE){
+        const labelInput = document.getElementById("visitRateLabel");
+        const reservationInput = document.getElementById("visitRateReservation");
+        const visitInput = document.getElementById("visitRateVisit");
+        const percentInput = document.getElementById("visitRatePercent");
+        if (labelInput) labelInput.value = "";
+        if (reservationInput) reservationInput.value = "";
+        if (visitInput) visitInput.value = "";
+        if (percentInput) percentInput.value = "-";
+        return;
+      }
       entryFields.querySelectorAll("input[id^='metric-']").forEach(input => { input.value = ""; });
       updateEntryTotal();
     }
     function prefillEntry(dateISO){
       if (!dateISO) return;
+      if (activeTab === TAB_VISIT_RATE){
+        const row = state.visitRateByWeek[dateISO];
+        const labelInput = document.getElementById("visitRateLabel");
+        const reservationInput = document.getElementById("visitRateReservation");
+        const visitInput = document.getElementById("visitRateVisit");
+        const percentInput = document.getElementById("visitRatePercent");
+        if (!row){
+          clearEntryFields();
+          return;
+        }
+        const base = row && typeof row === "object" ? row : {};
+        if (labelInput) labelInput.value = String(base.label || "");
+        if (reservationInput) reservationInput.value = toNumber(base.reservationCount);
+        if (visitInput) visitInput.value = toNumber(base.visitCount);
+        if (percentInput){
+          const visitRate = calcVisitRatePercent(base.reservationCount, base.visitCount);
+          percentInput.value = Number.isFinite(visitRate) ? `${visitRate.toFixed(1)}%` : "-";
+        }
+        return;
+      }
       const row = state.rowsByDate[dateISO];
       const header = getActiveHeader();
       const key = getActiveMetricsKey();
@@ -1390,7 +1688,32 @@
     async function saveEntry(){
       const dateISO = getEntryDateISO();
       if (!dateISO){
-        setMsg("날짜 형식을 확인하세요. 예: 2025.1.2", "error");
+        setMsg(activeTab === TAB_VISIT_RATE ? "주 시작일을 확인하세요." : "날짜 형식을 확인하세요. 예: 2025.1.2", "error");
+        return;
+      }
+      if (activeTab === TAB_VISIT_RATE){
+        const labelInput = document.getElementById("visitRateLabel");
+        const reservationInput = document.getElementById("visitRateReservation");
+        const visitInput = document.getElementById("visitRateVisit");
+        const payload = {
+          label: String(labelInput ? labelInput.value : "").trim(),
+          reservationCount: toNumber(reservationInput ? reservationInput.value : 0),
+          visitCount: toNumber(visitInput ? visitInput.value : 0)
+        };
+        if (DATA_MODE === "local"){
+          updateLocalVisitRateRow(dateISO, payload);
+          setMsg("로컬 저장 완료", "success");
+          return;
+        }
+        try{
+          btnEntrySave.disabled = true;
+          await set(ref(db, `${DB_ROOT}/${VISIT_RATE_DB_KEY}/${dateISO}`), { ...payload, updatedAt: serverTimestamp() });
+          setMsg("저장 완료", "success");
+        }catch(err){
+          setMsg(`저장 실패: ${err.message || err}`, "error");
+        }finally{
+          btnEntrySave.disabled = false;
+        }
         return;
       }
       updateEntryTotal();
@@ -1414,7 +1737,38 @@
     async function deleteEntry(){
       const dateISO = selectedDateISO || getEntryDateISO();
       if (!dateISO){
-        setMsg("삭제할 날짜를 선택하세요.", "error");
+        setMsg(activeTab === TAB_VISIT_RATE ? "삭제할 주차를 선택하세요." : "삭제할 날짜를 선택하세요.", "error");
+        return;
+      }
+      if (activeTab === TAB_VISIT_RATE){
+        if (!confirm(`${dateISO} 주차 데이터를 삭제할까요?`)) return;
+        if (DATA_MODE === "local"){
+          const store = loadLocalStore();
+          if (store.visitRateWeeks && store.visitRateWeeks[dateISO]){
+            delete store.visitRateWeeks[dateISO];
+            saveLocalStore(store);
+            applyLocalStore(store, getEmbeddedData());
+          }
+          if (entryDateInput) entryDateInput.value = "";
+          selectedDateISO = "";
+          setDailySelection("");
+          clearEntryFields();
+          setMsg("삭제 완료", "success");
+          return;
+        }
+        try{
+          btnDeleteRow.disabled = true;
+          await remove(ref(db, `${DB_ROOT}/${VISIT_RATE_DB_KEY}/${dateISO}`));
+          if (entryDateInput) entryDateInput.value = "";
+          selectedDateISO = "";
+          setDailySelection("");
+          clearEntryFields();
+          setMsg("삭제 완료", "success");
+        }catch(err){
+          setMsg(`삭제 실패: ${err.message || err}`, "error");
+        }finally{
+          btnDeleteRow.disabled = false;
+        }
         return;
       }
       if (!confirm(`${dateISO} 데이터를 삭제할까요? (해당 날짜 전체 삭제)`)) return;
@@ -1447,17 +1801,22 @@
     function setDefaultRange(rows){
       if (!rows.length || hasCustomRange) return;
       if (startInput.value || endInput.value) return;
+      const datedRows = rows
+        .map(row => row && (row.date || row.weekStart))
+        .filter(Boolean)
+        .sort((a, b) => a - b);
+      if (!datedRows.length) return;
       const today = new Date();
       const rangeStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29);
       const rangeEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const hasRecent = rows.some(row => row.date && row.date >= rangeStart && row.date <= rangeEnd);
+      const hasRecent = datedRows.some(date => date >= rangeStart && date <= rangeEnd);
       if (hasRecent){
         startInput.value = formatISO(rangeStart);
         endInput.value = formatISO(rangeEnd);
         return;
       }
-      const minDate = rows[0].date;
-      const maxDate = rows[rows.length - 1].date;
+      const minDate = datedRows[0];
+      const maxDate = datedRows[datedRows.length - 1];
       startInput.value = formatISO(minDate);
       endInput.value = formatISO(maxDate);
     }
@@ -1650,7 +2009,7 @@
     }
     function renderVisitsCompare(rows){
       if (!visitsComparePanel || !visitsCompareWrap) return;
-      const show = Boolean(TAB_META[activeTab]);
+      const show = activeTab !== TAB_VISIT_RATE && Boolean(TAB_META[activeTab]);
       visitsComparePanel.classList.toggle("hidden", !show);
       if (!show) return;
       const meta = getActiveMeta();
@@ -1748,6 +2107,263 @@
           <tbody>${bodyHtml}</tbody>
         </table>
       `;
+    }
+    function renderVisitRateCards(rows){
+      const totalReservations = rows.reduce((sum, row) => sum + row.reservationCount, 0);
+      const totalVisits = rows.reduce((sum, row) => sum + row.visitCount, 0);
+      const averageRate = calcVisitRatePercent(totalReservations, totalVisits);
+      const latest = rows.length ? rows[rows.length - 1] : null;
+      const latestDelta = latest ? latest.deltaVisitRate : NaN;
+      const deltaClass = getDeltaClass(latestDelta);
+      const latestLabel = latest ? escapeHtml(getVisitRateLabel(latest)) : "데이터 없음";
+      document.getElementById("cards").innerHTML = `
+        <div class="card">
+          <div class="t">총 예약 수</div>
+          <div class="v">${fmt(totalReservations)}</div>
+        </div>
+        <div class="card">
+          <div class="t">내원 수</div>
+          <div class="v">${fmt(totalVisits)}</div>
+        </div>
+        <div class="card">
+          <div class="t">평균 내원율</div>
+          <div class="v">${formatPlainRate(averageRate)}</div>
+        </div>
+        <div class="card">
+          <div class="t">전주 대비</div>
+          <div class="v ${deltaClass}">${formatRatePointChange(latestDelta)}</div>
+          <div class="note">${latestLabel}</div>
+        </div>
+      `;
+    }
+    function renderVisitRateSummary(rows){
+      const totalReservations = rows.reduce((sum, row) => sum + row.reservationCount, 0);
+      const totalVisits = rows.reduce((sum, row) => sum + row.visitCount, 0);
+      const averageRate = calcVisitRatePercent(totalReservations, totalVisits);
+      const latest = rows.length ? rows[rows.length - 1] : null;
+      const summaryRows = [
+        { name: "총 예약 수", value: fmt(totalReservations) },
+        { name: "총 내원 수", value: fmt(totalVisits) },
+        { name: "평균 내원율", value: formatPlainRate(averageRate) },
+        { name: "최근 주차", value: latest ? escapeHtml(getVisitRateLabel(latest)) : "-" },
+        { name: "전주 대비", value: latest ? formatRatePointChange(latest.deltaVisitRate) : "-" }
+      ];
+      document.getElementById("sumBody").innerHTML = summaryRows.map(item => `
+        <tr>
+          <td>${item.name}</td>
+          <td><b>${item.value}</b></td>
+        </tr>
+      `).join("");
+    }
+    function renderVisitRateTable(rows){
+      if (!rows || rows.length === 0){
+        document.getElementById("dailyWrap").innerHTML = "<div class=\"msg\">표시할 내원율 데이터가 없습니다.</div>";
+        return;
+      }
+      const headHtml = [
+        "<th onclick=\"sortTable('dailyBody', 0)\">주차 <span class=\"sort-icon\">&#8597;</span></th>",
+        "<th onclick=\"sortTable('dailyBody', 1)\">주 시작일 <span class=\"sort-icon\">&#8597;</span></th>",
+        "<th onclick=\"sortTable('dailyBody', 2)\">총 예약 수 <span class=\"sort-icon\">&#8597;</span></th>",
+        "<th onclick=\"sortTable('dailyBody', 3)\">내원 수 <span class=\"sort-icon\">&#8597;</span></th>",
+        "<th onclick=\"sortTable('dailyBody', 4)\">내원율 <span class=\"sort-icon\">&#8597;</span></th>",
+        "<th onclick=\"sortTable('dailyBody', 5)\">전주 대비 <span class=\"sort-icon\">&#8597;</span></th>"
+      ].join("");
+      const bodyHtml = rows.map(row => {
+        const deltaClass = getDeltaClass(row.deltaVisitRate);
+        return `
+          <tr data-date="${row.weekISO}">
+            <td>${escapeHtml(getVisitRateLabel(row))}</td>
+            <td>${row.weekISO}</td>
+            <td>${fmt(row.reservationCount)}</td>
+            <td>${fmt(row.visitCount)}</td>
+            <td><b>${formatPlainRate(row.visitRate)}</b></td>
+            <td class="${deltaClass}">${formatRatePointChange(row.deltaVisitRate)}</td>
+          </tr>
+        `;
+      }).join("");
+      document.getElementById("dailyWrap").innerHTML = `
+        <table>
+          <thead><tr>${headHtml}</tr></thead>
+          <tbody id="dailyBody">${bodyHtml}</tbody>
+        </table>
+      `;
+      const dailyBody = document.getElementById("dailyBody");
+      if (dailyBody){
+        dailyBody.querySelectorAll("tr").forEach(row => {
+          row.addEventListener("click", () => {
+            const dateISO = row.getAttribute("data-date");
+            if (dateISO){
+              selectEntryDate(dateISO);
+              setDailySelection(dateISO);
+            }
+          });
+        });
+        if (selectedDateISO){
+          setDailySelection(selectedDateISO);
+        }
+      }
+    }
+    function createVisitRateTotalBarChart(rows){
+      const ctx = document.getElementById("totalBarChart");
+      if (!ctx) return;
+      const labels = rows.map(row => getVisitRateLabel(row));
+      if (totalBarChart) totalBarChart.destroy();
+      totalBarChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "총 예약 수",
+              data: rows.map(row => row.reservationCount),
+              backgroundColor: "rgba(37, 99, 235, 0.72)",
+              borderColor: "#2563eb",
+              borderWidth: 2,
+              borderRadius: 6
+            },
+            {
+              label: "내원 수",
+              data: rows.map(row => row.visitCount),
+              backgroundColor: "rgba(16, 185, 129, 0.72)",
+              borderColor: "#10b981",
+              borderWidth: 2,
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { color: getComputedStyle(document.body).getPropertyValue("--text") } },
+            tooltip: {
+              callbacks: {
+                label: context => `${context.dataset.label} ${fmt(context.parsed.y)}건`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: getComputedStyle(document.body).getPropertyValue("--muted"), callback: value => value.toLocaleString() },
+              grid: { color: getComputedStyle(document.body).getPropertyValue("--border") }
+            },
+            x: {
+              ticks: {
+                color: getComputedStyle(document.body).getPropertyValue("--muted"),
+                maxRotation: 0,
+                minRotation: 0,
+                font: { size: 10 },
+                autoSkip: true,
+                maxTicksLimit: 12
+              },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+    function createVisitRateTrendChart(rows){
+      const ctx = document.getElementById("trendChart");
+      if (!ctx) return;
+      const labels = rows.map(row => getVisitRateLabel(row));
+      if (trendChart) trendChart.destroy();
+      trendChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "내원율",
+            data: rows.map(row => Number.isFinite(row.visitRate) ? Number(row.visitRate.toFixed(1)) : null),
+            borderWidth: 3,
+            tension: 0.35,
+            fill: false,
+            borderColor: "#f59e0b",
+            backgroundColor: "#f59e0b",
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { color: getComputedStyle(document.body).getPropertyValue("--text") } },
+            tooltip: {
+              callbacks: {
+                label: context => {
+                  const row = rows[context.dataIndex];
+                  if (!row) return "";
+                  return `내원율 ${formatPlainRate(row.visitRate)} (${fmt(row.visitCount)}/${fmt(row.reservationCount)})`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              suggestedMax: 100,
+              ticks: { color: getComputedStyle(document.body).getPropertyValue("--muted"), callback: value => `${value}%` },
+              grid: { color: getComputedStyle(document.body).getPropertyValue("--border") }
+            },
+            x: {
+              ticks: {
+                color: getComputedStyle(document.body).getPropertyValue("--muted"),
+                maxRotation: 0,
+                minRotation: 0,
+                font: { size: 10 },
+                autoSkip: true,
+                maxTicksLimit: 10
+              },
+              grid: { color: getComputedStyle(document.body).getPropertyValue("--border") }
+            }
+          }
+        }
+      });
+    }
+    function createVisitRatePieChart(rows){
+      const ctx = document.getElementById("pieChart");
+      if (!ctx) return;
+      const totalReservations = rows.reduce((sum, row) => sum + row.reservationCount, 0);
+      const totalVisits = rows.reduce((sum, row) => sum + row.visitCount, 0);
+      const missedVisits = Math.max(totalReservations - totalVisits, 0);
+      if (pieChart) pieChart.destroy();
+      pieChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["내원", "미내원"],
+          datasets: [{
+            data: [totalVisits, missedVisits],
+            backgroundColor: ["#10b981", "#ef4444"],
+            borderWidth: 2,
+            borderColor: getComputedStyle(document.body).getPropertyValue("--panel")
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { color: getComputedStyle(document.body).getPropertyValue("--text") } }
+          }
+        }
+      });
+    }
+    function renderVisitRateTab(){
+      setDefaultRange(state.visitRateRows);
+      const rows = getFilteredVisitRateRows(state.visitRateRows);
+      renderVisitRateCards(rows);
+      renderVisitRateSummary(rows);
+      renderVisitRateTable(rows);
+      renderVisitsCompare([]);
+      renderWeeklyMediaPerformance([]);
+      createVisitRateTotalBarChart(rows);
+      createVisitRateTrendChart(rows);
+      createVisitRatePieChart(rows);
+      if (!rows.length){
+        setMsg("표시할 내원율 데이터가 없습니다.", "error");
+      }else{
+        setMsg("조회 완료", "success");
+      }
     }
 function createTrendChart(rows){
       const ctx = document.getElementById("trendChart");
@@ -1914,6 +2530,10 @@ function createTrendChart(rows){
       totalBarChart.update();
     }
     function renderAll(){
+      if (activeTab === TAB_VISIT_RATE){
+        renderVisitRateTab();
+        return;
+      }
       const header = getActiveHeader();
       if (!header.length){
         setMsg("헤더 정보를 불러오는 중...", "");
@@ -2047,7 +2667,7 @@ function createTrendChart(rows){
     }
     function applyLocalStore(store, embedded){
       const base = embedded || null;
-      const header = (store && Array.isArray(store.header) && store.header.length)
+      let header = (store && Array.isArray(store.header) && store.header.length)
         ? store.header
         : (base && base.header && base.header.length ? base.header : DEFAULT_HEADER);
       const foreignHeader = (store && Array.isArray(store.foreignHeader) && store.foreignHeader.length)
@@ -2056,16 +2676,23 @@ function createTrendChart(rows){
       const normalizedForeignHeader = isPlaceholderForeignHeader(foreignHeader)
         ? DEFAULT_FOREIGN_HEADER
         : normalizeForeignHeader(foreignHeader);
-      const rowsByDate = {
+      let rowsByDate = {
         ...(base && base.rows ? base.rows : {}),
         ...(store && store.rows ? store.rows : {})
       };
+      const migrated = applyVisitMigrations(header, rowsByDate);
+      header = migrated.header;
+      rowsByDate = migrated.rowsByDate;
       state.header = header;
       state.foreignHeader = normalizedForeignHeader;
       state.rowsByDate = rowsByDate;
+      state.visitRateByWeek = (store && store.visitRateWeeks && typeof store.visitRateWeeks === "object")
+        ? store.visitRateWeeks
+        : {};
       rebuildRows();
+      rebuildVisitRateRows();
       buildEntryFields();
-      setDefaultRange(state.rows);
+      setDefaultRange(activeTab === TAB_VISIT_RATE ? state.visitRateRows : state.rows);
       renderAll();
     }
     function rebuildRows(){
@@ -2096,6 +2723,13 @@ function createTrendChart(rows){
       saveLocalStore(store);
       applyLocalStore(store, getEmbeddedData());
     }
+    function updateLocalVisitRateRow(weekISO, payload){
+      const store = loadLocalStore();
+      store.visitRateWeeks = store.visitRateWeeks || {};
+      store.visitRateWeeks[weekISO] = { ...payload, updatedAt: Date.now() };
+      saveLocalStore(store);
+      applyLocalStore(store, getEmbeddedData());
+    }
     async function seedFromEmbeddedCsv(headerRef, rowsRef){
       if (seedAttempted) return;
       seedAttempted = true;
@@ -2115,6 +2749,7 @@ function createTrendChart(rows){
       const headerRef = ref(db, `${DB_ROOT}/meta/header`);
       const foreignHeaderRef = ref(db, `${DB_ROOT}/meta/foreignHeader`);
       const rowsRef = ref(db, `${DB_ROOT}/rows`);
+      const visitRateRef = ref(db, `${DB_ROOT}/${VISIT_RATE_DB_KEY}`);
       onValue(headerRef, snapshot => {
         const header = normalizeHeader(snapshot.val());
         headerEmpty = header.length === 0;
@@ -2129,21 +2764,10 @@ function createTrendChart(rows){
           state.header = header;
         }
         if (!headerEmpty){
-          const migrated = migrateSearchColumns(header, state.rowsByDate);
+          const migrated = applyVisitMigrations(state.header, state.rowsByDate);
           if (migrated.migrated){
             state.header = migrated.header;
             state.rowsByDate = migrated.rowsByDate;
-            migratedSearchColumns = true;
-          }
-          const metaMigrated = migrateMetaLabel(state.header, state.rowsByDate);
-          if (metaMigrated.migrated){
-            state.header = metaMigrated.header;
-            migratedSearchColumns = true;
-          }
-          const googleAdMigrated = migrateGoogleAdColumn(state.header, state.rowsByDate);
-          if (googleAdMigrated.migrated){
-            state.header = googleAdMigrated.header;
-            state.rowsByDate = googleAdMigrated.rowsByDate;
             migratedSearchColumns = true;
           }
         }
@@ -2173,24 +2797,11 @@ function createTrendChart(rows){
       });
       onValue(rowsRef, snapshot => {
         state.rowsByDate = snapshot.val() || {};
-        if (!migratedSearchColumns){
-          const migrated = migrateSearchColumns(state.header, state.rowsByDate);
-          if (migrated.migrated){
-            state.header = migrated.header;
-            state.rowsByDate = migrated.rowsByDate;
-            migratedSearchColumns = true;
-          }
-          const metaMigrated = migrateMetaLabel(state.header, state.rowsByDate);
-          if (metaMigrated.migrated){
-            state.header = metaMigrated.header;
-            migratedSearchColumns = true;
-          }
-          const googleAdMigrated = migrateGoogleAdColumn(state.header, state.rowsByDate);
-          if (googleAdMigrated.migrated){
-            state.header = googleAdMigrated.header;
-            state.rowsByDate = googleAdMigrated.rowsByDate;
-            migratedSearchColumns = true;
-          }
+        const migrated = applyVisitMigrations(state.header, state.rowsByDate);
+        if (migrated.migrated){
+          state.header = migrated.header;
+          state.rowsByDate = migrated.rowsByDate;
+          migratedSearchColumns = true;
         }
         rowsEmpty = Object.keys(state.rowsByDate).length === 0;
         if (rowsEmpty && headerEmpty){
@@ -2204,7 +2815,15 @@ function createTrendChart(rows){
           migratedSearchColumns = false;
         }
         rebuildRows();
-        setDefaultRange(state.rows);
+        setDefaultRange(activeTab === TAB_VISIT_RATE ? state.visitRateRows : state.rows);
+        renderAll();
+      });
+      onValue(visitRateRef, snapshot => {
+        state.visitRateByWeek = snapshot.val() || {};
+        rebuildVisitRateRows();
+        if (activeTab === TAB_VISIT_RATE){
+          setDefaultRange(state.visitRateRows);
+        }
         renderAll();
       });
     }
